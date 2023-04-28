@@ -1,0 +1,13 @@
+natsort==8.3.1
+numpy==1.21.6
+opencv_python==4.7.0.72
+Pillow==9.3.0
+Pillow==9.5.0
+PyYAML==6.0
+PyYAML==6.0
+scikit_image==0.19.3
+setuptools==65.6.3
+torch==1.13.1+cu117
+torchmetrics==0.11.4
+torchvision==0.14.1+cu117
+tqdm==4.65.0
