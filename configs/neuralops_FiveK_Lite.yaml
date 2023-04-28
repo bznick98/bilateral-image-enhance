@@ -1,0 +1,51 @@
+# general info
+name: NeuralOps_Train_FiveKLite_Eval_FiveKLite
+notes: ""
+
+# model
+model: 
+  name: neuralops
+  in_nc: 3
+  out_nc: 3
+  base_nf: 64
+  encode_nf: 32
+  load_path: null
+
+# loss
+loss:
+  # weights for different loss components
+  W_L2: 0                               # L2 loss (nn.MSELoss)
+  W_L1: 1                               # L1 loss (nn.SmoothL1Loss)
+  W_TV: 0                               # Total Variation Loss
+  W_col: 0                              # Color Consistency Loss
+  W_spa: 0                              # Spatial Consistency Loss
+  W_exp: 0                              # Exposure Control Loss
+  patch_size: 0                         # - patch size for exposure control loss
+  E: 0                                  # - exposure level for exposure control loss
+  W_cos: 0                              # Color Angle Loss
+
+
+# dataset
+dataset: FiveK_Lite                            # now supports [LOL, VELOL, SICE, FiveK_Lite]
+data_dir: /home/ppnk-wsl/capstone/Dataset/FiveK_Lite/
+augment: True                           # augment training set if enabled
+resize: null                            # input & target resize if specified
+low_res: null                           # adding a low-res branch when retriving data, will return low_res, img, target
+num_workers: 4                          # num_workers used in DataLoader
+
+# train
+lr: 0.0001                              # learning rate
+bs: 1                                   # batch size
+epochs: 100                             # number of training epochs
+pretrain_path: ./result/checkpoints/NeuralOps_FiveKLite_Official_Pretrain/neurop_fivek_lite.pth  # resume pretrained model from this path
+checkpoint_save_path: ./result/checkpoints/       # save checkpoint to {name}/ under this directory
+visualization_save_path: ./result/visualization/  # save visualization to {name}/ under this directory
+
+# eval
+
+# misc
+tensorboard: False                      # run "tensorboard --logdir runs/"
+visualize_interval: 5                   # interval in terms of epochs to save visualization result, null == don't visualize
+checkpoint_interval: 1                  # interval in terms of epochs to save model weights, null == don't save
+
+
