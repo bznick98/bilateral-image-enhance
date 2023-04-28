@@ -23,8 +23,8 @@ pip install -r requirement.txt
 * Zero Reference Loss: `loss.ZeroReferenceLoss`
     * Color Consistency Loss: `loss.ColorConsistencyLoss`
     * Spatial Consistency Loss: `loss.SpatialConsistencyLoss`
-    * Exposure Control Loss: `ExposureControlLoss`
-    * Illumination Smoothness Loss (TV Loss): `IlluminationSmoothnessLoss`
+    * Exposure Control Loss: `loss.ExposureControlLoss`
+    * Illumination Smoothness Loss (TV Loss): `loss.IlluminationSmoothnessLoss`
 * Or just specify your own loss in `train.py`
 
 ### Currently Supported **Dataset**
