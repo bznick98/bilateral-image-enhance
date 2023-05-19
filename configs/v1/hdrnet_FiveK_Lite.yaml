@@ -1,0 +1,59 @@
+# general info
+name: HDRNet_FiveK_Lite
+notes: ""
+
+# model
+model: 
+  name: hdrnet
+  luma_bins: 8
+  spatial_bins: 16
+  guide_pts: 4
+  channel_multiplier: 1
+  batch_norm: False
+  n_in: 3
+  n_out: 3
+  iteratively_upsample: False
+
+# loss
+loss:
+  # weights for different loss components
+  W_L2: 1                               # L2 loss (nn.MSELoss)
+  W_L1: 0                               # L1 loss (nn.SmoothL1Loss)
+  W_TV: 0                               # Total Variation Loss
+  W_col: 0                              # Color Consistency Loss
+  W_spa: 0                              # Spatial Consistency Loss
+  W_exp: 0                              # Exposure Control Loss
+  patch_size: 0                         # - patch size for exposure control loss
+  E: 0                                  # - exposure level for exposure control loss
+  W_cos: 0                              # Color Angle Loss
+
+
+# dataset
+dataset: FiveK                          # now supports [LOL, VELOL, SICE, FiveK]
+data_dir: /home/ppnk-wsl/capstone/Dataset/FiveK_Lite/
+augment: True                           # augment training set if enabled
+resize: null                            # input & target resize if specified
+low_res: [256, 256]
+num_workers: 4                          # num_workers used in DataLoader
+
+# train
+lr: !!float 1e-4                        # learning rate
+bs: 1                                   # batch size
+beta1: 0.9                              # beta1 for Adam optimizer
+beta2: 0.99                             # beta2 for Adam optimizer
+weight_decay: !!float 1e-8              # weight decay 1e-8
+epochs: 100                             # number of training epochs
+resume_from: null                       # resume pretrained model from this path
+checkpoint_save_path: ./result/checkpoints/       # save checkpoint to {name}/ under this directory
+visualization_save_path: ./result/visualization/  # save visualization to {name}/ under this director
+
+# eval
+eval_model_path: ./result/checkpoints/HDRNet_Train_FiveKLite_Eval_FiveKLite/ckpt_99.pth  # checkpoint used for evaluation (test.py)
+
+# misc
+tensorboard: False                      # run "tensorboard --logdir runs/"
+visualize_interval: 5                   # interval in terms of epochs to save visualization result, null == don't visualize
+checkpoint_interval: 1                  # interval in terms of epochs to save model weights, null == don't save
+device: cuda                            # choose from [cpu, cuda], null==use gpu if available if not cpu
+profiling: True                         # if enabled, profile network performance on testing only
+seed: 0                                 # for repeatability

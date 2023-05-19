@@ -1,8 +1,79 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms
+
+
+### Custom Loss Compatible with Config File
+class CustomLoss(nn.Module):
+    def __init__(self, 
+        patch_size=16,
+        W_TV=0, W_col=0, W_spa=0, W_exp=0, E=0.6,
+        W_L2=0, W_L1=0, W_cos=0
+    ):
+        super().__init__()
+        # self.zero_ref_loss = ZeroReferenceLoss(
+        #     patch_size,
+        #     W_TV, W_col,
+        #     W_spa, W_exp,
+        #     E)
+        self.TV_loss = TVLoss()
+        self.L2_loss = nn.MSELoss()
+        self.L1_loss = nn.L1Loss() # nn.SmoothL1Loss()
+        self.cos_loss = CosineLoss()
+        self.W_L2 = W_L2
+        self.W_L1 = W_L1
+        self.W_cos = W_cos
+        self.W_TV = W_TV
+    
+    def forward(self, y, target, x=None, illum_map=None):
+        """
+        calculate weighted sum of each loss components
+        if x (input image) or illum_map is None, zero_ref_loss will not be computed
+        """
+        if x is None or illum_map is None:
+            zero_ref_loss = 0
+        else:
+            zero_ref_loss = self.zero_ref_loss(x, y, illum_map)
+
+        l1_loss = self.L1_loss(y, target)
+        l2_loss = self.L2_loss(y, target)
+        cos_loss = self.cos_loss(y, target)
+        TV_loss = self.TV_loss(y)
+
+        # weighted sum of loss components
+        return l2_loss * self.W_L2 +\
+               l1_loss * self.W_L1 +\
+               cos_loss * self.W_cos +\
+               TV_loss * self.W_TV
 
 ### NeuralOps Loss
+class NeuralOpsLoss(nn.Module):
+    def __init__(self, W_TV=0.1, W_cos=0.1):
+        super(NeuralOpsLoss, self).__init__()
+        self.W_TV = W_TV
+        self.W_cos = W_cos
+        self.TV_Loss = TVLoss()
+        self.Cos_Loss = CosineLoss()
+        self.L1_Loss = nn.L1Loss()
+    
+    def forward(self, y, target):
+        return self.L1_Loss(y, target) + self.TV_Loss(y) * self.W_TV + self.Cos_Loss(y, target) * self.W_cos
+    
+class ExposureLoss(nn.Module):
+    def __init__(self):
+        super(ExposureLoss, self).__init__()
+        self.L1_Loss = nn.L1Loss()
+        self.grayscale = transforms.Grayscale()
+
+    def forward(self, y, target):
+        # convert y & target to monochrome
+        y = self.grayscale(y)
+        target = self.grayscale(target)
+        
+        return self.L1_Loss(y, target)
+
+### NeuralOps Loss Components
 class TVLoss(nn.Module):
     def __init__(self,TVLoss_weight=1):
         super(TVLoss,self).__init__()
@@ -29,47 +100,6 @@ class CosineLoss(nn.Module):
         y = y.permute(0, 2, 3, 1).view(-1, c)
         loss = 1.0 - self.cos(x, y).sum() / (1.0 * b * h * w)
         return loss
-
-### Custom Loss Compatible with Config File
-class CustomLoss(nn.Module):
-    def __init__(self, 
-        patch_size=16,
-        W_TV=0, W_col=0, W_spa=0, W_exp=0, E=0.6,
-        W_L2=0, W_L1=0, W_cos=0
-    ):
-        super().__init__()
-        self.zero_ref_loss = ZeroReferenceLoss(
-            patch_size,
-            W_TV, W_col,
-            W_spa, W_exp,
-            E)
-        self.L2_loss = nn.MSELoss()
-        self.L1_loss = nn.SmoothL1Loss()
-        self.cos_loss = nn.CosineSimilarity(dim=1, eps=1e-6)
-        self.W_L2 = W_L2
-        self.W_L1 = W_L1
-        self.W_cos = W_cos
-    
-    def forward(self, y, target, x=None, illum_map=None):
-        """
-        calculate weighted sum of each loss components
-        if x (input image) or illum_map is None, zero_ref_loss will not be computed
-        """
-        if x is None or illum_map is None:
-            zero_ref_loss = 0
-        else:
-            zero_ref_loss = self.zero_ref_loss(x, y, illum_map)
-
-        l1_loss = self.L1_loss(y, target)
-        l2_loss = self.L2_loss(y, target)
-        cos_loss = torch.mean(self.cos_loss(y, target))
-
-        # weighted sum of loss components
-        return l2_loss * self.W_L2 +\
-               l1_loss * self.W_L1 +\
-               cos_loss * self.W_cos +\
-               zero_ref_loss
-
 
 ### Zero Reference Loss from Zero-DCE++
 class ZeroReferenceLoss(nn.Module):
@@ -99,6 +129,7 @@ class ZeroReferenceLoss(nn.Module):
 
         return self.W_TV * loss_TV + self.W_spa * loss_spa + self.W_col * loss_col + self.W_exp * loss_exp
 
+### ZeroReferenceLoss Components
 class ColorConsistencyLoss(nn.Module):
     def __init__(self):
         super(ColorConsistencyLoss, self).__init__()

@@ -1,0 +1,59 @@
+# general info
+name: NeuralOps_FiveK_Dark_With_Official_Renderer
+notes: ""
+
+# model
+model: 
+  name: neuralops
+  in_nc: 3
+  out_nc: 3
+  base_nf: 64
+  encode_nf: 32
+  load_path: ./result/checkpoints/NeuralOps_FiveK_Official_Pretrain/neurops_fivek_init_self_trained.pth
+  return_vals: False
+
+# loss
+loss:
+  # weights for different loss components
+  W_L2: 0                               # L2 loss (nn.MSELoss)
+  W_L1: 1                               # L1 loss (nn.SmoothL1Loss)
+  W_TV: 0.1                               # Total Variation Loss
+  W_col: 0                              # Color Consistency Loss
+  W_spa: 0                              # Spatial Consistency Loss
+  W_exp: 0                              # Exposure Control Loss
+  patch_size: 0                         # - patch size for exposure control loss
+  E: 0                                  # - exposure level for exposure control loss
+  W_cos: 0.1                              # Color Angle Loss
+
+
+# dataset
+dataset: FiveK                          # now supports [LOL, VELOL, SICE, FiveK]
+data_dir: /home/ppnk-wsl/capstone/Dataset/FiveK_Dark/
+augment: True                           # augment training set if enabled
+resize: null                            # input & target resize if specified
+low_res: null                           # adding a low-res branch when retriving data, will return low_res, img, target
+num_workers: 4                          # num_workers used in DataLoader
+
+# train
+lr: !!float 5e-5                        # learning rate
+bs: 1                                   # batch size
+beta1: 0.9                              # beta1 for Adam optimizer
+beta2: 0.99                             # beta2 for Adam optimizer
+weight_decay: 0                         # weight decay
+epochs: 134                             # number of training epochs
+resume_from: null                       # resume pretrained model from this path
+checkpoint_save_path: ./result/checkpoints/       # save checkpoint to {name}/ under this directory
+visualization_save_path: ./result/visualization/  # save visualization to {name}/ under this directory
+
+# eval
+eval_model_path: ./result/checkpoints/NeuralOps_FiveK_Official_Pretrain/neurop_fivek_dark.pth  # checkpoint used for evaluation (test.py)
+# eval_model_path: ./result/checkpoints/NeuralOps_FiveK_Lite_With_Official_Renderer/ckpt_119.pth  # checkpoint used for evaluation (test.py)
+
+# misc
+tensorboard: False                      # run "tensorboard --logdir runs/"
+visualize_interval: 5                   # interval in terms of epochs to save visualization result, null == don't visualize
+checkpoint_interval: 1                  # interval in terms of epochs to save model weights, null == don't save
+device: cuda                            # choose from [cpu, cuda], null==use gpu if available if not cpu
+profiling: True                         # if enabled, profile network performance on testing only
+seed: 0                                 # for repeatability
+

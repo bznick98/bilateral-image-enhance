@@ -1,0 +1,38 @@
+# Configuration for Cog ⚙️
+# Reference: https://github.com/replicate/cog/blob/main/docs/yaml.md
+
+build:
+  # set to true if your model requires a GPU
+  gpu: false
+
+  # a list of ubuntu apt packages to install
+  # system_packages:
+    # - "libgl1-mesa-glx"
+    # - "libglib2.0-0"
+
+  # python version in the form '3.8' or '3.8.12'
+  python_version: "3.9.16"
+
+  # a list of packages in the format <package-name>==<version>
+  python_packages:
+    - "natsort==8.3.1"
+    - "numpy==1.24.3"
+    - "Pillow==9.5.0"
+    - "PyYAML==6.0"
+    - "setuptools==65.6.3"
+    - "skimage==0.0"
+    - "torch==2.0.0"
+    - "torchinfo==1.7.2"
+    - "torchmetrics==0.11.4"
+    - "torchvision==0.15.1"
+    - "tqdm==4.65.0"
+  
+  # commands run after the environment is setup
+  run:
+    - "echo env is ready!"
+    - "echo building bilateral ops..."
+    - "python ./models/bilateral_neuralops/bilateral_slice_op/ install"
+    - "echo done building bilateral ops!"
+
+# predict.py defines how predictions are run on your model
+predict: "predict.py:Predictor"

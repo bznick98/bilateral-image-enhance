@@ -121,7 +121,7 @@ class NeurOP(nn.Module):
             scalar = predict_head(feat)
             vals.append(scalar)
             img = nop(img,scalar)
-        
+        img = torch.clamp(img, 0, 1.0)
         if self.return_vals:
             return img, vals
         else:

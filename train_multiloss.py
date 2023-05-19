@@ -49,10 +49,9 @@ def train(config):
 			config['lr'],
 			betas=(config['beta1'], config['beta2']),
 			weight_decay=config['weight_decay'])
-	
-	scheduler = lr_scheduler.MultiStepLR(optimizer,
-											milestones=[22, 44, 66, 88],
-											gamma=0.5)
+	# scheduler = lr_scheduler.MultiStepLR(optimizer,
+	# 										milestones=[config['epochs'] // 2 + i * 10 for i in range(10)],
+	# 										gamma=0.5)
 
 	# set seed
 	set_seed(config['seed'])
@@ -76,18 +75,16 @@ def train(config):
 				optimizer.zero_grad()
 
 				# out, coeff = model(lowres, img)
-				out = model(*input)
-				
-				batch_loss = loss(out, target)
-				# batch_loss = loss(target, out, img, coeff)
+				imgs = model(*input)
+
+				# compute exposure loss for first two stage, and compute color loss for last two stage
+				batch_loss = loss(imgs, target)
 				batch_loss.backward()
 				
 				optimizer.step()
 
 				tepoch.set_postfix(epoch=f"{e+1}/{config['epochs']}", loss=f"{batch_loss.cpu().detach().numpy():.3f}")
 				epoch_loss.append(batch_loss.cpu().detach().numpy())
-
-		scheduler.step()
 
 		# save model every epoch
 		save_filename = "ckpt_" + str(e) + ".pth"
