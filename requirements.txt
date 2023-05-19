@@ -3,7 +3,7 @@ numpy==1.24.3
 Pillow==9.5.0
 PyYAML==6.0
 setuptools==65.6.3
-skimage==0.0
+scikit-image
 torch==2.0.0
 torchinfo==1.7.2
 torchmetrics==0.11.4
