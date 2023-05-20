@@ -42,7 +42,8 @@ def train(config):
 	# 		W_TV=config['loss']['W_TV'], W_col=config['loss']['W_col'], W_spa=config['loss']['W_spa'], W_exp=config['loss']['W_exp'], 
 	# 		W_L2=config['loss']['W_L2'], W_L1=config['loss']['W_L1'], W_cos=config['loss']['W_cos']
 	# 	)
-	loss = NeuralOpsLoss(W_TV=config['loss']['W_TV'], W_cos=config['loss']['W_cos']).to(device)
+	output_loss = NeuralOpsLoss(W_TV=config['loss']['W_TV'], W_cos=config['loss']['W_cos']).to(device)
+	exposure
 
 	# optimizer
 	optimizer = Adam(model.parameters(),
@@ -78,7 +79,7 @@ def train(config):
 				imgs = model(*input)
 
 				# compute exposure loss for first two stage, and compute color loss for last two stage
-				batch_loss = loss(imgs, target)
+				batch_loss = output_loss(imgs, target)
 				batch_loss.backward()
 				
 				optimizer.step()
