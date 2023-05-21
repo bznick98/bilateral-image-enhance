@@ -60,7 +60,7 @@ class NeuralOpsLoss(nn.Module):
                     data_range = 1.0,
                     K=(0.01, 0.03),
                     alpha=0.025,
-                    compensation=200.0,
+                    compensation=1.0,
                     cuda_dev=0
         )
     
@@ -236,7 +236,7 @@ class MS_SSIM_L1_LOSS(nn.Module):
                  data_range = 1.0,
                  K=(0.01, 0.03),
                  alpha=0.025,
-                 compensation=200.0,
+                 compensation=1.0,
                  cuda_dev=0,):
         super(MS_SSIM_L1_LOSS, self).__init__()
         self.DR = data_range
