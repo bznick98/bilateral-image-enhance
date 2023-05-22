@@ -12,6 +12,7 @@ from models.bilateral_neuralops.SimpleBilateralNetCurves import SimpleBilateralN
 from models.bilateral_neuralops.SimpleBilateralNetPoint import SimpleBilateralNetPointwise
 from models.bilateral_neuralops.AdaptiveBilateralNet import AdaptiveBilateralNetPointwise
 from models.bilateral_neuralops.TorchBilateralNet import TorchSimpleBilateralNetPointwise
+from models.bilateral_neuralops.SMBilateralNet import SMBilateralNetPointwise
 
 
 #####################################
@@ -130,6 +131,43 @@ class AdaptiveBilateralOperator(nn.Module):
 		super(AdaptiveBilateralOperator,self).__init__()
 
 		self.bilateral_model = AdaptiveBilateralNetPointwise(
+			lowres=lowres,
+			luma_bins=luma_bins,
+			spatial_bins=spatial_bins,
+			channel_multiplier=channel_multiplier,
+			guide_pts=guide_pts,
+			norm=norm,
+			n_in=in_nc,
+			n_out=out_nc,
+			iteratively_upsample=iteratively_upsample
+		)
+
+	def forward(self, x, val):
+		y = self.bilateral_model(x, val)
+		return y
+############################################################################################################
+
+############################################################################################################
+class SMBilateralOperator(nn.Module):
+	"""
+	This operator learns a bilateral grid from down-sampled input image, 
+	when forward, it slices the learned bilateral grid using full-res input image
+	to get a full-res output image. 
+	"""
+	def __init__(self,
+			in_nc=3,
+			out_nc=3,
+			lowres=[256, 256],
+			luma_bins=8,
+			spatial_bins=64,
+			channel_multiplier=1,
+			guide_pts=8,
+			norm=False,
+			iteratively_upsample=False
+		):
+		super(SMBilateralOperator,self).__init__()
+
+		self.bilateral_model = SMBilateralNetPointwise(
 			lowres=lowres,
 			luma_bins=luma_bins,
 			spatial_bins=spatial_bins,
@@ -317,6 +355,73 @@ class ColorBilateralRenderer(nn.Module):
 		map_vb = self.vb_block(x_vb,v_vb)
 
 		return rec_ex, rec_bc, rec_wb, rec_vb, map_ex, map_bc, map_wb, map_vb
+############################################################################################################
+
+############################################################################################################
+class SMColorBilateralRenderer(nn.Module):
+	def __init__(self,
+			n_in=3,
+			n_out=3,
+			lowres=[256, 256],
+			luma_bins=8,
+			spatial_bins=64,
+			channel_multiplier=1,
+			guide_pts=8,
+			norm=False,
+			iteratively_upsample=False
+	):
+		super(SMColorBilateralRenderer, self).__init__()
+		self.n_in = n_in
+		self.n_out = n_out
+		self.ex_block = SMBilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.bc_block = SMBilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.wb_block = SMBilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.vb_block = SMBilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+
+	def forward(self, x_ex, x_bc, x_wb, x_vb, v_ex, v_bc, v_wb, v_vb):
+		rec_ex = self.ex_block(x_ex,0)
+		rec_bc = self.bc_block(x_bc,0)
+		rec_wb = self.wb_block(x_wb,0)
+		rec_vb = self.vb_block(x_vb,0)
+
+		map_ex = self.ex_block(x_ex,v_ex)
+		map_bc = self.bc_block(x_bc,v_bc)
+		map_wb = self.wb_block(x_wb,v_wb)
+		map_vb = self.vb_block(x_vb,v_vb)
+
+		return rec_ex, rec_bc, rec_wb, rec_vb, map_ex, map_bc, map_wb, map_vb
+############################################################################################################
+
+############################################################################################################
+class SMBilateralRenderer(nn.Module):
+	def __init__(self,
+			n_in=3,
+			n_out=3,
+			lowres=[256, 256],
+			luma_bins=8,
+			spatial_bins=64,
+			channel_multiplier=1,
+			guide_pts=8,
+			norm=False,
+			iteratively_upsample=False
+	):
+		super(SMBilateralRenderer, self).__init__()
+		self.n_in = n_in
+		self.n_out = n_out
+		self.ex_block = SMBilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.bc_block = SMBilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.vb_block = SMBilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+
+	def forward(self, x_ex, x_bc, x_vb, v_ex, v_bc, v_vb):
+		rec_ex = self.ex_block(x_ex,0)
+		rec_bc = self.bc_block(x_bc,0)
+		rec_vb = self.vb_block(x_vb,0)
+
+		map_ex = self.ex_block(x_ex,v_ex)
+		map_bc = self.bc_block(x_bc,v_bc)
+		map_vb = self.vb_block(x_vb,v_vb)
+
+		return rec_ex, rec_bc, rec_vb, map_ex, map_bc, map_vb
 ############################################################################################################
 
 ############################################################################################################
@@ -739,4 +844,226 @@ class MultiLossBilateralNeurOP(nn.Module):
 			return imgs, vals
 		else:
 			return imgs
+############################################################################################################
+
+############################################################################################################
+class TorchBilateralNeurOP(nn.Module):
+	def __init__(self,
+				 # neural op params
+				 n_in = 3,
+				 n_out = 3,
+				 encode_nf = 32,
+				 load_path = None,
+				 return_vals = False,
+				 # bilatera grid params
+				 lowres=[256, 256],
+				 luma_bins = 8,
+				 spatial_bins = 64,
+				 channel_multiplier = 1,
+				 guide_pts = 8,
+				 norm = False,
+				 iteratively_upsample = False,
+				 order=None
+		):
+		super(TorchBilateralNeurOP,self).__init__()
+
+		self.fea_dim = encode_nf * 3
+		self.image_encoder = Encoder(n_in,encode_nf)
+		renderer = TorchSimpleBilateralRenderer(n_in, n_out) # TODO: pass bilateral params here
+		if load_path is not None: 
+			renderer.load_state_dict(torch.load(load_path))
+			
+		self.bc_renderer = renderer.bc_block
+		self.bc_predictor =  Predictor(self.fea_dim)
+		
+		self.ex_renderer = renderer.ex_block
+		self.ex_predictor =  Predictor(self.fea_dim)
+		
+		self.vb_renderer = renderer.vb_block
+		self.vb_predictor =  Predictor(self.fea_dim)
+
+		if order == "ebwv":
+			print(f"[Neural Ops Order] {order}")
+			# exp5 order (exposure - black clipping - white balance - vibrance)
+			self.renderers = [self.ex_renderer, self.bc_renderer, self.vb_renderer]
+			self.predict_heads = [self.ex_predictor, self.bc_predictor, self.vb_predictor]
+		else:
+			# default order (black clipping - exposure - white balance - vibrance)
+			self.renderers = [self.bc_renderer, self.ex_renderer, self.vb_renderer]
+			self.predict_heads = [self.bc_predictor ,self.ex_predictor, self.vb_predictor]
+
+		# if enabled, forward will return output, vals
+		self.return_vals = return_vals
+			
+	def render(self, x, vals):
+		b,_,h,w = img.shape
+		imgs = []
+		for nop, scalar in zip(self.renderers, vals):
+			img = nop(img, scalar)
+			output_img = torch.clamp(img, 0, 1.0)
+			imgs.append(output_img)
+		return imgs
+	
+	def forward(self, img):
+		b,_,h,w = img.shape
+		vals = []
+		for nop, predict_head in zip(self.renderers,self.predict_heads):
+			img_resized = F.interpolate(input=img, size=(256, int(256*w/h)), mode='bilinear', align_corners=False)
+			feat = self.image_encoder(img_resized)
+			scalar = predict_head(feat)
+			vals.append(scalar)
+			img = nop(img,scalar)
+		if self.return_vals:
+			return img, vals
+		else:
+			return img
+############################################################################################################
+
+############################################################################################################
+class SMColorBilateralNeurOP(nn.Module):
+	def __init__(self,
+				 # neural op params
+				 n_in = 3,
+				 n_out = 3,
+				 encode_nf = 32,
+				 load_path = None,
+				 return_vals = False,
+				 # bilatera grid params
+				 lowres=[256, 256],
+				 luma_bins = 8,
+				 spatial_bins = 64,
+				 channel_multiplier = 1,
+				 guide_pts = 8,
+				 norm = False,
+				 iteratively_upsample = False,
+				 order=None
+		):
+		super(SMColorBilateralNeurOP,self).__init__()
+
+		self.fea_dim = encode_nf * 3
+		self.image_encoder = Encoder(n_in,encode_nf)
+		renderer = SMColorBilateralRenderer(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample) # TODO: pass bilateral params here
+		if load_path is not None: 
+			renderer.load_state_dict(torch.load(load_path))
+			
+		self.bc_renderer = renderer.bc_block
+		self.bc_predictor =  Predictor(self.fea_dim)
+		
+		self.ex_renderer = renderer.ex_block
+		self.ex_predictor =  Predictor(self.fea_dim)
+
+		self.wb_renderer = renderer.wb_block
+		self.wb_predictor =  Predictor(self.fea_dim)
+		
+		self.vb_renderer = renderer.vb_block
+		self.vb_predictor =  Predictor(self.fea_dim)
+
+		if order == "ebwv":
+			print(f"[Neural Ops Order] {order}")
+			# exp5 order (exposure - black clipping - white balance - vibrance)
+			self.renderers = [self.ex_renderer, self.bc_renderer, self.wb_renderer, self.vb_renderer]
+			self.predict_heads = [self.ex_predictor, self.bc_predictor, self.wb_predictor, self.vb_predictor]
+		else:
+			# default order (black clipping - exposure - white balance - vibrance)
+			self.renderers = [self.bc_renderer, self.ex_renderer, self.wb_renderer, self.vb_renderer]
+			self.predict_heads = [self.bc_predictor ,self.ex_predictor, self.wb_predictor, self.vb_predictor]
+
+		# if enabled, forward will return output, vals
+		self.return_vals = return_vals
+			
+	def render(self, x, vals):
+		b,_,h,w = img.shape
+		imgs = []
+		for nop, scalar in zip(self.renderers, vals):
+			img = nop(img, scalar)
+			output_img = torch.clamp(img, 0, 1.0)
+			imgs.append(output_img)
+		return imgs
+	
+	def forward(self, img):
+		b,_,h,w = img.shape
+		vals = []
+		for nop, predict_head in zip(self.renderers,self.predict_heads):
+			img_resized = F.interpolate(input=img, size=(256, int(256*w/h)), mode='bilinear', align_corners=False)
+			feat = self.image_encoder(img_resized)
+			scalar = predict_head(feat)
+			vals.append(scalar)
+			img = nop(img,scalar)
+		if self.return_vals:
+			return img, vals
+		else:
+			return img
+############################################################################################################
+
+############################################################################################################
+class SMBilateralNeurOP(nn.Module):
+	def __init__(self,
+				 # neural op params
+				 n_in = 3,
+				 n_out = 3,
+				 encode_nf = 32,
+				 load_path = None,
+				 return_vals = False,
+				 # bilatera grid params
+				 lowres=[256, 256],
+				 luma_bins = 8,
+				 spatial_bins = 64,
+				 channel_multiplier = 1,
+				 guide_pts = 8,
+				 norm = False,
+				 iteratively_upsample = False,
+				 order=None
+		):
+		super(SMBilateralNeurOP,self).__init__()
+
+		self.fea_dim = encode_nf * 3
+		self.image_encoder = Encoder(n_in,encode_nf)
+		renderer = SMBilateralRenderer(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample) # TODO: pass bilateral params here
+		if load_path is not None: 
+			renderer.load_state_dict(torch.load(load_path))
+			
+		self.bc_renderer = renderer.bc_block
+		self.bc_predictor =  Predictor(self.fea_dim)
+		
+		self.ex_renderer = renderer.ex_block
+		self.ex_predictor =  Predictor(self.fea_dim)
+		
+		self.vb_renderer = renderer.vb_block
+		self.vb_predictor =  Predictor(self.fea_dim)
+
+		if order == "ebv":
+			print(f"[Neural Ops Order] {order}")
+			# exp5 order (exposure - black clipping - vibrance)
+			self.renderers = [self.ex_renderer, self.bc_renderer, self.vb_renderer]
+			self.predict_heads = [self.ex_predictor, self.bc_predictor, self.vb_predictor]
+		else:
+			# default order (black clipping - exposure - vibrance)
+			self.renderers = [self.bc_renderer, self.ex_renderer, self.wb_renderer, self.vb_renderer]
+			self.predict_heads = [self.bc_predictor ,self.ex_predictor, self.vb_predictor]
+
+		# if enabled, forward will return output, vals
+		self.return_vals = return_vals
+			
+	def render(self, x, vals):
+		b,_,h,w = img.shape
+		imgs = []
+		for nop, scalar in zip(self.renderers, vals):
+			img = nop(img, scalar)
+			output_img = torch.clamp(img, 0, 1.0)
+			imgs.append(output_img)
+		return imgs
+	
+	def forward(self, img):
+		b,_,h,w = img.shape
+		vals = []
+		for nop, predict_head in zip(self.renderers,self.predict_heads):
+			img_resized = F.interpolate(input=img, size=(256, int(256*w/h)), mode='bilinear', align_corners=False)
+			feat = self.image_encoder(img_resized)
+			scalar = predict_head(feat)
+			vals.append(scalar)
+			img = nop(img,scalar)
+		if self.return_vals:
+			return img, vals
+		else:
+			return img
 ############################################################################################################

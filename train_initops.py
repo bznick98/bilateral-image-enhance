@@ -13,7 +13,7 @@ from torch.profiler import profile, record_function, ProfilerActivity
 from loss import CustomLoss, ZeroReferenceLoss
 from models.neuralops.networks import Renderer
 from models.bilateral_neuralops.networks import BilateralRenderer
-from models.bilateral_neuralops.networks import SimpleBilateralRenderer, AdaptiveBilateralRenderer
+from models.bilateral_neuralops.networks import SimpleBilateralRenderer, AdaptiveBilateralRenderer, SMBilateralRenderer
 from models.bilateral_neuralops.networks import TorchSimpleBilateralRenderer
 from utils import save_model, load_model, set_seed, save_tensor, hstack_tensors
 from utils import get_base_name, get_timecode
@@ -64,6 +64,19 @@ def train(config):
 
 	elif config['model']['name'] == 'adaptive_bilateral_neuralops':
 		model = AdaptiveBilateralRenderer(
+			n_in=config['model']['n_in'],
+			n_out=config['model']['n_out'],
+			lowres=config['model']['lowres'],
+			luma_bins=config['model']['luma_bins'],
+			spatial_bins=config['model']['spatial_bins'],
+			channel_multiplier=config['model']['channel_multiplier'],
+			guide_pts=config['model']['guide_pts'],
+			norm=config['model']['batch_norm'],
+			iteratively_upsample=config['model']['iteratively_upsample']
+		)
+	
+	elif config['model']['name'] == 'sm_bilateral_neuralops':
+		model = SMBilateralRenderer(
 			n_in=config['model']['n_in'],
 			n_out=config['model']['n_out'],
 			lowres=config['model']['lowres'],
