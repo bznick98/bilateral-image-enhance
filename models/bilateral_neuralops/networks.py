@@ -1038,7 +1038,7 @@ class SMBilateralNeurOP(nn.Module):
 			self.predict_heads = [self.ex_predictor, self.bc_predictor, self.vb_predictor]
 		else:
 			# default order (black clipping - exposure - vibrance)
-			self.renderers = [self.bc_renderer, self.ex_renderer, self.wb_renderer, self.vb_renderer]
+			self.renderers = [self.bc_renderer, self.ex_renderer, self.vb_renderer]
 			self.predict_heads = [self.bc_predictor ,self.ex_predictor, self.vb_predictor]
 
 		# if enabled, forward will return output, vals
