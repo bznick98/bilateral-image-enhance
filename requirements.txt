@@ -3,13 +3,11 @@ natsort==8.3.1
 numpy==1.24.3
 opencv_python==4.7.0.72
 Pillow==9.5.0
-Pillow==9.5.0
-PyYAML==6.0
 PyYAML==6.0
 setuptools==66.0.0
 scikit-image
-torch==2.1.0.dev20230505+cu121
+torch==2.0.1
 torchinfo==1.7.2
-torchmetrics==0.11.4
-torchvision==0.16.0.dev20230505+cu121
+torchmetrics
+torchvision
 tqdm==4.65.0

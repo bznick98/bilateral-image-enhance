@@ -103,7 +103,7 @@ def perf(config):
 	batch_size = 100
 	total_time = 0
 	with torch.no_grad():
-		for _ in range(batch_size):
+		for _ in tqdm(range(batch_size)):
 			starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
 			starter.record()
 			_ = model(dummy_input)
