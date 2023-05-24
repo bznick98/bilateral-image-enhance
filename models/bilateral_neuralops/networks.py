@@ -203,7 +203,7 @@ class SMBilateralOperatorV2(nn.Module):
 			norm=False,
 			iteratively_upsample=False
 		):
-		super(SMBilateralOperator,self).__init__()
+		super(SMBilateralOperatorV2,self).__init__()
 
 		self.bilateral_model = SMBilateralNetPointwiseV2(
 			lowres=lowres,
@@ -475,7 +475,7 @@ class SMBilateralRendererV2(nn.Module):
 			norm=False,
 			iteratively_upsample=False
 	):
-		super(SMBilateralRenderer, self).__init__()
+		super(SMBilateralRendererV2, self).__init__()
 		self.n_in = n_in
 		self.n_out = n_out
 		self.ex_block = SMBilateralOperatorV2(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
@@ -1139,7 +1139,7 @@ class SMBilateralNeurOP(nn.Module):
 ############################################################################################################
 
 ############################################################################################################
-class SMBilateralNeurOPV2(nn.Module):
+class SMV2BilateralNeurOP(nn.Module):
 	def __init__(self,
 				 # neural op params
 				 n_in = 3,
@@ -1157,7 +1157,7 @@ class SMBilateralNeurOPV2(nn.Module):
 				 iteratively_upsample = False,
 				 order=None
 		):
-		super(SMBilateralNeurOP,self).__init__()
+		super(SMV2BilateralNeurOP,self).__init__()
 
 		self.fea_dim = encode_nf * 3
 		self.image_encoder = Encoder(n_in,encode_nf)

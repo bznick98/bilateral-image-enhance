@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import numpy as np
-from models.bilateral_neuralops.layers import conv, fc, BilateralSliceFunction
+from models.bilateral_neuralops.layers import BilateralSliceFunction, ConvBlock
 
 
 class SMBilateralNetPointwiseV2(nn.Module):
@@ -65,19 +65,17 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		extra_convs = np.linspace(0, num_downsamples - 1, extra_convs, dtype=int).tolist()
 		for i in range(num_downsamples):
 			out_channels = (2 ** i) * self.feature_multiplier
-			splat.append(conv(in_channels, out_channels, 3, stride=2, norm=False if i == 0 else self.norm))
+			splat.append(ConvBlock(in_channels, out_channels, 3, stride=2, norm=False if i == 0 else self.norm))
 			if i in extra_convs:
-				splat.append(conv(out_channels, out_channels, 3, norm=self.norm))
+				splat.append(ConvBlock(out_channels, out_channels, 3, norm=self.norm))
 			in_channels = out_channels
 
 		self.n_splat = in_channels
-		splat.append(conv(self.n_splat, self.n_splat, 1, relu=False))
+		splat.append(ConvBlock(self.n_splat, self.n_splat, 1, relu=False, norm=self.norm))
 		self.splat = nn.Sequential(*splat)
 
 		# local branch
-		self.local = nn.Sequential(conv(self.n_splat, 2*self.n_splat, 1),
-							  conv(2*self.n_splat, self.n_splat, 1))
-
+		self.local = ConvBlock(self.n_splat, self.n_splat, 1, norm=self.norm)
 		# # splat features
 		# self.splat = nn.Sequential(
 		# 	conv(self.n_in, self.n_splat, 1, stride=2),
@@ -95,7 +93,7 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		# )
 
 		# from fused of condition + splat (32-channel) -> (3*4*luma_bins-channel)
-		self.pred_grid = conv(self.n_splat, self.luma_bins * (self.n_in+1) * self.n_out, 1, norm=False, relu=False)
+		self.pred_grid = ConvBlock(self.n_splat, self.luma_bins * (self.n_in+1) * self.n_out, 1, norm=False, relu=False)
 
 	def forward_guidemap(self, image_fullres, val):
 		guidemap = self.ccm(image_fullres)     # bs x C x H x W
@@ -109,7 +107,7 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		return guidemap
 
 	def make_guide_params(self):
-		ccm = conv(self.n_in, self.n_in, 1, norm=False, relu=False,
+		ccm = ConvBlock(self.n_in, self.n_in, 1, norm=False, relu=False,
 				   weights_init=(np.identity(self.n_in, dtype=np.float32) +
 								 np.random.randn(1).astype(np.float32) * 1e-4)
 				   .reshape((self.n_in, self.n_in, 1, 1)),
@@ -124,7 +122,7 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		slopes[:, :, :, :, 0] = 1.0
 		slopes = nn.Parameter(data=torch.from_numpy(slopes))
 
-		projection = conv(self.n_in, 1, 1, norm=False, relu=False,
+		projection = ConvBlock(self.n_in, 1, 1, norm=False, relu=False,
 						  weights_init=torch.ones(1, self.n_in, 1, 1) / self.n_in,
 						  bias_init=torch.zeros(1))
 
