@@ -17,8 +17,7 @@ model:
   batch_norm: False
   iteratively_upsample: False
   order: null # default order: bewv
-  # load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorBilateralRenderer_ZBDATA_Aug500/ckpt_399.pth
-  load_path: ~
+  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorBilateralRenderer_ZBDATA_Aug500/ckpt_399.pth
 
 # loss
 loss:
@@ -36,7 +35,7 @@ loss:
 
 # dataset
 dataset: FiveK                          # now supports [LOL, VELOL, SICE, FiveK]
-data_dir: /home/ppnk-wsl/capstone/Dataset/FiveK_Dark/
+data_dir: /home/ubuntu/capstone/Dataset/FiveK_Dark/
 augment: True                           # augment training set if enabled
 resize: null                            # input & target resize if specified
 low_res: null                           # adding a low-res branch when retriving data, will return low_res, img, target

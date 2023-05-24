@@ -94,19 +94,25 @@ def perf(config):
 		with record_function("model_inference"):
 			out = model(*input)
 
-	print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
+	# print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=15))
+	print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=15))
 
 	# inference batch && TODO: SHOULD BE WORKING FOR INIT MODEL AS WELL
-	batch_size = 5
-	input = torch.rand((batch_size, *config['input_size'][1:]), device=device)
-	total_time = 0
-	for img in input:
-		img = img.unsqueeze(dim=0)
-		start = time.time()
-		out = model(img)
-		total_time += time.time() - start
+	dummy_input = torch.rand(config['input_size'], device=device)
 
-	print(f"[Runtime Perf] {total_time/batch_size*1000:.2f} ms per inference ({batch_size/total_time:.2f} FPS) - Input Image Size: {config['input_size'][1:]}")
+	batch_size = 100
+	total_time = 0
+	with torch.no_grad():
+		for _ in range(batch_size):
+			starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+			starter.record()
+			_ = model(dummy_input)
+			ender.record()
+			torch.cuda.synchronize()
+			curr_time = starter.elapsed_time(ender) # in ms
+			total_time += curr_time
+
+	print(f"[Runtime Perf] {total_time/batch_size:.2f} ms per inference ({batch_size/(total_time/1000):.2f} FPS) - Input Image Size: {config['input_size'][1:]}")
 
 if __name__ == '__main__':
 	import argparse

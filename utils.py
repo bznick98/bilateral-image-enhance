@@ -473,7 +473,7 @@ def eval(model, dataset, device, out_dir=None, profiling=False):
 	lpips_list = []
 
 	# visualize batch number if on this list
-	visualize_idx = list(range(10))
+	visualize_idx = list(range(10)) + [25, 55, 85, 115, 145, 175, 205]
 
 	# time measure
 	total_time = 0
