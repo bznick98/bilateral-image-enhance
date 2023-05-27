@@ -372,7 +372,7 @@ def get_dataset(config):
 		data_dir = config['data_dir']
 		train_set = InitDataset(data_dir, config['augment'])
 		generator = torch.Generator().manual_seed(config['seed'])
-		_, test_set = random_split(train_set, [0.5, 0.5], generator=generator)
+		_, test_set = random_split(train_set, [0.9, 0.1], generator=generator)
 		# test_set = train_set
 		val_set = None
 
@@ -492,7 +492,7 @@ def eval(model, dataset, device, out_dir=None, profiling=False):
 	lpips_list = []
 
 	# visualize batch number if on this list
-	visualize_idx = list(range(10)) + [25, 55, 85, 115, 145, 175, 205]
+	visualize_idx = list(range(10)) + [25, 55, 115, 145, 175, 250, 275, 325, 345, 375, 455, 475]
 
 	# time measure
 	total_time = 0

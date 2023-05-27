@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import numpy as np
-from models.bilateral_neuralops.layers import BilateralSliceFunction, ConvBlock
+from models.bilateral_neuralops.layers import conv, fc, BilateralSliceFunction, ConvBlock
 
 
 class SMBilateralNetPointwiseV2(nn.Module):
@@ -45,14 +45,14 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		local_features = self.local(splat_features)
 
 		# condition branch
-		# condition_features = self.cond_net(splat_features)
-		# condition_features = condition_features.view(image_lowres.shape[0], -1)
-		# # condition_features = condition_features + val
-		# condition_features = self.cond_fc(condition_features)
-		# condition_features = condition_features.view(image_lowres.shape[0], self.n_splat, 1, 1)
+		condition_features = self.cond_net(splat_features)
+		condition_features = condition_features.view(image_lowres.shape[0], -1)
+		# condition_features = condition_features + val
+		condition_features = self.cond_fc(condition_features)
+		condition_features = condition_features.view(image_lowres.shape[0], self.n_splat, 1, 1)
+		fused_features = F.relu(condition_features + local_features)
 		
-		# coefficients = self.pred_grid(F.relu(condition_features + local_features, inplace=True))
-		coefficients = self.pred_grid(local_features)
+		coefficients = self.pred_grid(fused_features)
 		coefficients = torch.stack(torch.split(coefficients, self.n_out*(self.n_in+1), dim=1), dim=2)
 		return coefficients
 
@@ -71,11 +71,14 @@ class SMBilateralNetPointwiseV2(nn.Module):
 			in_channels = out_channels
 
 		self.n_splat = in_channels
-		splat.append(ConvBlock(self.n_splat, self.n_splat, 1, relu=False, norm=self.norm))
+		splat.append(ConvBlock(self.n_splat, self.n_splat, 1, relu=False))
 		self.splat = nn.Sequential(*splat)
 
 		# local branch
-		self.local = ConvBlock(self.n_splat, self.n_splat, 1, norm=self.norm)
+		self.local = nn.Sequential(ConvBlock(self.n_splat, 2*self.n_splat, 1, norm=self.norm),
+								ConvBlock(2*self.n_splat, 2*self.n_splat, 1, norm=self.norm),
+							  ConvBlock(2*self.n_splat, self.n_splat, 1, norm=self.norm))
+
 		# # splat features
 		# self.splat = nn.Sequential(
 		# 	conv(self.n_in, self.n_splat, 1, stride=2),
@@ -83,23 +86,24 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		# )
 
 		# condition networks (global condition)
-		# self.cond_net = nn.Sequential(
-		# 	conv(self.n_splat, 4, 1, stride=2),
-		# 	nn.AdaptiveAvgPool2d(4) 	# pool to (N,4,4,4)
-		# )
+		self.cond_net = nn.Sequential(
+			ConvBlock(self.n_splat, 2, 1, stride=2),
+			nn.AdaptiveAvgPool2d(4) 	# pool to (N,2,4,4)
+		)
 
-		# self.cond_fc = nn.Sequential(
-		# 	fc(64, self.n_splat),
-		# )
+		self.cond_fc = nn.Sequential(
+			fc(32, 32),
+			fc(32, self.n_splat),
+		)
 
 		# from fused of condition + splat (32-channel) -> (3*4*luma_bins-channel)
 		self.pred_grid = ConvBlock(self.n_splat, self.luma_bins * (self.n_in+1) * self.n_out, 1, norm=False, relu=False)
 
 	def forward_guidemap(self, image_fullres, val):
 		guidemap = self.ccm(image_fullres)     # bs x C x H x W
-		guidemap = guidemap.unsqueeze(dim=4)   # bs x C x H x W x 1
+		guidemap = guidemap.unsqueeze(dim=4)                # bs x C x H x W x 1
 		# bs x C x H x W = ( 1 x C x 1 x 1 x 4 * F.relu( bs x C x H x W x 1 - C x 1 x 1 x 4 ).sum(dim=4)
-		guidemap = (self.slopes * F.relu(guidemap - self.shifts, inplace=True)).sum(dim=4)
+		guidemap = (self.slopes * F.relu(guidemap - self.shifts)).sum(dim=4)
 		guidemap = self.projection(guidemap)   	# bs x 1 x H x W
 		guidemap = guidemap.sum(dim=1)  			# bs x 1 x H x W, instead of project, use sum as indicated in the paper
 		guidemap = F.hardtanh(guidemap, min_val=0, max_val=1)

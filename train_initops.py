@@ -13,7 +13,7 @@ from torch.profiler import profile, record_function, ProfilerActivity
 from loss import CustomLoss, ZeroReferenceLoss
 from models.neuralops.networks import Renderer
 from models.bilateral_neuralops.networks import BilateralRenderer
-from models.bilateral_neuralops.networks import SimpleBilateralRenderer, AdaptiveBilateralRenderer, SMBilateralRenderer
+from models.bilateral_neuralops.networks import SimpleBilateralRenderer, AdaptiveBilateralRenderer, SMBilateralRenderer, SMBilateralRendererV2
 from models.bilateral_neuralops.networks import TorchSimpleBilateralRenderer
 from utils import save_model, load_model, set_seed, save_tensor, hstack_tensors
 from utils import get_base_name, get_timecode
@@ -87,6 +87,20 @@ def train(config):
 			norm=config['model']['batch_norm'],
 			iteratively_upsample=config['model']['iteratively_upsample']
 		)
+	
+	elif config['model']['name'] == 'smv2_bilateral_neuralops':
+		model = SMBilateralRendererV2(
+			n_in=config['model']['n_in'],
+			n_out=config['model']['n_out'],
+			lowres=config['model']['lowres'],
+			luma_bins=config['model']['luma_bins'],
+			spatial_bins=config['model']['spatial_bins'],
+			channel_multiplier=config['model']['channel_multiplier'],
+			guide_pts=config['model']['guide_pts'],
+			norm=config['model']['batch_norm'],
+			iteratively_upsample=config['model']['iteratively_upsample']
+		)
+
 	else:
 		raise NotImplementedError()
 	
@@ -109,9 +123,9 @@ def train(config):
 					config['lr'],
 					betas=(config['beta1'], config['beta2']),
 					weight_decay=config['weight_decay'])
-	# scheduler = lr_scheduler.MultiStepLR(optimizer,
-	# 										milestones=[config['epochs'] // 2 + i * 10 for i in range(10)],
-	# 										gamma=0.5)
+	scheduler = lr_scheduler.MultiStepLR(optimizer,
+											milestones=[config['epochs'] // 2 + i * 10 for i in range(10)],
+											gamma=0.5)
 
 	# set seed
 	set_seed(config['seed'])
@@ -158,6 +172,8 @@ def train(config):
 				tepoch.set_postfix(epoch=f"{e+1}/{config['epochs']}", loss=f"{batch_loss.cpu().detach().numpy():.3f}")
 				epoch_loss.append(batch_loss.cpu().detach().numpy())
 
+		scheduler.step()
+
 		# evaluation
 		model.eval()
 		visualization_indices = list(range(10))
@@ -179,6 +195,9 @@ def train(config):
 				rec_ex, rec_bc, rec_vb, map_ex, map_bc, map_vb = model(
 					A_ex, A_bc, A_vb, val_ex, val_bc, val_vb
 				)
+
+				rec_ex, rec_bc, rec_vb = torch.clamp(rec_ex, 0, 1), torch.clamp(rec_bc, 0, 1), torch.clamp(rec_vb, 0, 1)
+				map_ex, map_bc, map_vb = torch.clamp(map_ex, 0, 1), torch.clamp(map_bc, 0, 1), torch.clamp(map_vb, 0, 1)
 
 				psnr_list.append((calc_psnr(map_ex.cpu(), B_ex.cpu()) + calc_psnr(rec_ex.cpu(), A_ex.cpu()))/2)
 				ssim_list.append((calc_ssim(map_ex.cpu(), B_ex.cpu()) + calc_ssim(rec_ex.cpu(), A_ex.cpu()))/2)

@@ -17,7 +17,7 @@ model:
   batch_norm: True # TODO: rename this to norm, actually uses Half-Instance-Norm
   iteratively_upsample: False
   order: null # default order: bewv
-  load_path: ~
+  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_SMV2_BilateralRenderer_ZBDATA_Aug500/ckpt_399.pth
 
 # loss
 loss:
