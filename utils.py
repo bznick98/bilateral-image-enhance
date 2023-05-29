@@ -332,6 +332,25 @@ def get_model(config, print_summary=True):
 			order=config['model']['order']
 		)
 		if print_summary: summary(model, (1, 3, 500, 300))
+	
+	elif name == "colorewv_bilateral_neuralops":
+		from models.bilateral_neuralops.networks import ColorEWVBilateralNeurOP
+		model = ColorEWVBilateralNeurOP(
+			n_in=config['model']['n_in'],
+			n_out=config['model']['n_out'],
+			encode_nf=config['model']['encode_nf'],
+			load_path=config['model']['load_path'],
+			return_vals=config['model']['return_vals'],
+			lowres=config['model']['lowres'],
+			luma_bins=config['model']['luma_bins'],
+			spatial_bins=config['model']['spatial_bins'],
+			channel_multiplier=config['model']['channel_multiplier'],
+			guide_pts=config['model']['guide_pts'],
+			norm=config['model']['batch_norm'],
+			iteratively_upsample=config['model']['iteratively_upsample'],
+			order=config['model']['order']
+		)
+		if print_summary: summary(model, (1, 3, 500, 300))
 
 	else:
 		raise NotImplementedError("Please add model initiation in utils.py:get_model()")
@@ -399,6 +418,15 @@ def get_dataset(config):
 		from datasets.FiveK import Init4OpsDataset
 		data_dir = config['data_dir']
 		train_set = Init4OpsDataset(data_dir, config['augment'])
+		generator = torch.Generator().manual_seed(config['seed'])
+		_, test_set = random_split(train_set, [0.9, 0.1], generator=generator)
+		# test_set = train_set
+		val_set = None
+
+	elif dataset_name == "EWVOPS_INIT":
+		from datasets.FiveK import InitEWVOpsDataset
+		data_dir = config['data_dir']
+		train_set = InitEWVOpsDataset(data_dir, config['augment'])
 		generator = torch.Generator().manual_seed(config['seed'])
 		_, test_set = random_split(train_set, [0.9, 0.1], generator=generator)
 		# test_set = train_set

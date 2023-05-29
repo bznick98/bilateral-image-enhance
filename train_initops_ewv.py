@@ -10,11 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 from torch.profiler import profile, record_function, ProfilerActivity
 
-from loss import CustomLoss, ZeroReferenceLoss
-from models.neuralops.networks import Renderer
-from models.bilateral_neuralops.networks import BilateralRenderer
-from models.bilateral_neuralops.networks import SimpleBilateralRenderer, AdaptiveBilateralRenderer, SMBilateralRenderer, SMBilateralRendererV2, ColorV2BilateralRenderer
-from models.bilateral_neuralops.networks import TorchSimpleBilateralRenderer
+from models.bilateral_neuralops.networks import ColorEWVBilateralRenderer
 from utils import save_model, load_model, set_seed, save_tensor, hstack_tensors
 from utils import get_base_name, get_timecode
 from utils import get_dataset, get_model, eval
@@ -39,70 +35,9 @@ def train(config):
 	train_loader = DataLoader(train_set, batch_size=config['bs'], shuffle=True, num_workers=config['num_workers'], pin_memory=True)
 	test_loader = DataLoader(test_set, batch_size=config['bs'], shuffle=False, num_workers=config['num_workers'], pin_memory=True)
 
-	# model initiation
-	if config['model']['name'] == 'neuralops':
-		model = Renderer(
-			in_nc=config['model']['in_nc'],
-			out_nc=config['model']['out_nc'],
-			base_nf=config['model']['base_nf']
-		)
-	elif config['model']['name'] == 'bilateral_neuralops':
-		model = BilateralRenderer(
-			in_nc=config['model']['in_nc'],
-			out_nc=config['model']['out_nc']
-		)
-	elif config['model']['name'] == 'simple_bilateral_neuralops':
-		model = SimpleBilateralRenderer(
-			in_nc=config['model']['in_nc'],
-			out_nc=config['model']['out_nc']
-		)
-	elif config['model']['name'] == 'torch_simple_bilateral_neuralops':
-		model = TorchSimpleBilateralRenderer(
-			in_nc=config['model']['in_nc'],
-			out_nc=config['model']['out_nc']
-		)
-
-	elif config['model']['name'] == 'adaptive_bilateral_neuralops':
-		model = AdaptiveBilateralRenderer(
-			n_in=config['model']['n_in'],
-			n_out=config['model']['n_out'],
-			lowres=config['model']['lowres'],
-			luma_bins=config['model']['luma_bins'],
-			spatial_bins=config['model']['spatial_bins'],
-			channel_multiplier=config['model']['channel_multiplier'],
-			guide_pts=config['model']['guide_pts'],
-			norm=config['model']['batch_norm'],
-			iteratively_upsample=config['model']['iteratively_upsample']
-		)
-	
-	elif config['model']['name'] == 'sm_bilateral_neuralops':
-		model = SMBilateralRenderer(
-			n_in=config['model']['n_in'],
-			n_out=config['model']['n_out'],
-			lowres=config['model']['lowres'],
-			luma_bins=config['model']['luma_bins'],
-			spatial_bins=config['model']['spatial_bins'],
-			channel_multiplier=config['model']['channel_multiplier'],
-			guide_pts=config['model']['guide_pts'],
-			norm=config['model']['batch_norm'],
-			iteratively_upsample=config['model']['iteratively_upsample']
-		)
-	
-	elif config['model']['name'] == 'smv2_bilateral_neuralops':
-		model = SMBilateralRendererV2(
-			n_in=config['model']['n_in'],
-			n_out=config['model']['n_out'],
-			lowres=config['model']['lowres'],
-			luma_bins=config['model']['luma_bins'],
-			spatial_bins=config['model']['spatial_bins'],
-			channel_multiplier=config['model']['channel_multiplier'],
-			guide_pts=config['model']['guide_pts'],
-			norm=config['model']['batch_norm'],
-			iteratively_upsample=config['model']['iteratively_upsample']
-		)
-
-	elif config['model']['name'] == 'colorv2_bilateral_neuralops':
-		model = ColorV2BilateralRenderer(
+	# model init
+	if config['model']['name'] == 'colorewv_bilateral_neuralops':
+		model = ColorEWVBilateralRenderer(
 			n_in=config['model']['n_in'],
 			n_out=config['model']['n_out'],
 			lowres=config['model']['lowres'],
@@ -158,25 +93,25 @@ def train(config):
 		with tqdm(train_loader, unit="batch") as tepoch:
 			for i, batch in enumerate(tepoch):
 				A_ex = batch['A_ex'].to(device) 
-				A_bc = batch['A_bc'].to(device) 
+				A_wb = batch['A_wb'].to(device) 
 				A_vb = batch['A_vb'].to(device)
 				val_ex = batch['val_ex'].to(device) 
-				val_bc = batch['val_bc'].to(device) 
+				val_wb = batch['val_wb'].to(device) 
 				val_vb = batch['val_vb'].to(device)
 				B_ex = batch['B_ex'].to(device) 
-				B_bc = batch['B_bc'].to(device) 
+				B_wb = batch['B_wb'].to(device) 
 				B_vb = batch['B_vb'].to(device)
 			
 				optimizer.zero_grad()
 
 				# run inference
-				rec_ex, rec_bc, rec_vb, map_ex, map_bc, map_vb = model(
-					A_ex, A_bc, A_vb, val_ex, val_bc, val_vb
+				rec_ex, rec_wb, rec_vb, map_ex, map_wb, map_vb = model(
+					A_ex, A_wb, A_vb, val_ex, val_wb, val_vb
 				)
 				
 				# compute loss
-				loss_unary = loss(rec_ex, A_ex) + loss(rec_bc, A_bc) + loss(rec_vb, A_vb)
-				loss_pair = loss(map_ex, B_ex) + loss(map_bc, B_bc) + loss(map_vb, B_vb)
+				loss_unary = loss(rec_ex, A_ex) + loss(rec_wb, A_wb) + loss(rec_vb, A_vb)
+				loss_pair = loss(map_ex, B_ex) + loss(map_wb, B_wb) + loss(map_vb, B_vb)
 				batch_loss = loss_unary + loss_pair
 				batch_loss.backward()
 				
@@ -195,22 +130,22 @@ def train(config):
 				if i not in visualization_indices: continue
 
 				A_ex = batch['A_ex'].to(device) 
-				A_bc = batch['A_bc'].to(device) 
+				A_wb = batch['A_wb'].to(device) 
 				A_vb = batch['A_vb'].to(device)
 				val_ex = batch['val_ex'].to(device) 
-				val_bc = batch['val_bc'].to(device) 
+				val_wb = batch['val_wb'].to(device) 
 				val_vb = batch['val_vb'].to(device)
 				B_ex = batch['B_ex'].to(device) 
-				B_bc = batch['B_bc'].to(device) 
+				B_wb = batch['B_wb'].to(device) 
 				B_vb = batch['B_vb'].to(device)
 
 				# model inference
-				rec_ex, rec_bc, rec_vb, map_ex, map_bc, map_vb = model(
-					A_ex, A_bc, A_vb, val_ex, val_bc, val_vb
+				rec_ex, rec_wb, rec_vb, map_ex, map_wb, map_vb = model(
+					A_ex, A_wb, A_vb, val_ex, val_wb, val_vb
 				)
 
-				rec_ex, rec_bc, rec_vb = torch.clamp(rec_ex, 0, 1), torch.clamp(rec_bc, 0, 1), torch.clamp(rec_vb, 0, 1)
-				map_ex, map_bc, map_vb = torch.clamp(map_ex, 0, 1), torch.clamp(map_bc, 0, 1), torch.clamp(map_vb, 0, 1)
+				rec_ex, rec_wb, rec_vb = torch.clamp(rec_ex, 0, 1), torch.clamp(rec_wb, 0, 1), torch.clamp(rec_vb, 0, 1)
+				map_ex, map_wb, map_vb = torch.clamp(map_ex, 0, 1), torch.clamp(map_wb, 0, 1), torch.clamp(map_vb, 0, 1)
 
 				psnr_list.append((calc_psnr(map_ex.cpu(), B_ex.cpu()) + calc_psnr(rec_ex.cpu(), A_ex.cpu()))/2)
 				ssim_list.append((calc_ssim(map_ex.cpu(), B_ex.cpu()) + calc_ssim(rec_ex.cpu(), A_ex.cpu()))/2)
@@ -224,11 +159,11 @@ def train(config):
 						os.makedirs(out_dir_i)
 					# save input, enhanced and ref image to disk
 					save_tensor(hstack_tensors(rec_ex[0], A_ex[0], torch.mean(torch.abs(A_ex[0] - rec_ex[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "rec_A_ex.jpg"))
-					save_tensor(hstack_tensors(rec_bc[0], A_bc[0], torch.mean(torch.abs(A_bc[0] - rec_bc[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "rec_A_bc.jpg"))
+					save_tensor(hstack_tensors(rec_wb[0], A_wb[0], torch.mean(torch.abs(A_wb[0] - rec_wb[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "rec_A_wb.jpg"))
 					save_tensor(hstack_tensors(rec_vb[0], A_vb[0], torch.mean(torch.abs(A_vb[0] - rec_vb[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "rec_A_vb.jpg"))
 
 					save_tensor(hstack_tensors(map_ex[0], B_ex[0], torch.mean(torch.abs(B_ex[0] - map_ex[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "map_B_ex.jpg"))
-					save_tensor(hstack_tensors(map_bc[0], B_bc[0], torch.mean(torch.abs(B_bc[0] - map_bc[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "map_B_bc.jpg"))
+					save_tensor(hstack_tensors(map_wb[0], B_wb[0], torch.mean(torch.abs(B_wb[0] - map_wb[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "map_B_wb.jpg"))
 					save_tensor(hstack_tensors(map_vb[0], B_vb[0], torch.mean(torch.abs(B_vb[0] - map_vb[0]), dim=0).repeat(3,1,1)), os.path.join(out_dir_i, "map_B_vb.jpg"))
 
 			# save model every epoch

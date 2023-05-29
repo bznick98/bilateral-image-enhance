@@ -297,6 +297,122 @@ class Init4OpsDataset(Dataset):
 			return img_GT, img_LQ
 
 
+class InitEWVOpsDataset(Dataset):
+	def __init__(self, image_dir, augment=False):
+		super(InitEWVOpsDataset,self).__init__()
+		self.augment = augment
+
+		filepath_EX = self.get_file_paths(os.path.join(image_dir,'EX'),'png')
+		filepath_WB = self.get_file_paths(os.path.join(image_dir,'WB'),'png')
+		filepath_VB = self.get_file_paths(os.path.join(image_dir,'VB'),'png')
+
+		self.file_ex = defaultdict(list)
+		self.file_wb = defaultdict(list)
+		self.file_vb = defaultdict(list)
+
+		for f_ex,f_wb,f_vb in zip(filepath_EX,filepath_WB,filepath_VB):
+			idx_ex = f_ex.split('/')[-1].split('-')[0]
+			idx_wb = f_wb.split('/')[-1].split('-')[0]
+			idx_vb = f_vb.split('/')[-1].split('-')[0]
+			self.file_ex[idx_ex].append(f_ex)
+			self.file_wb[idx_wb].append(f_wb)
+			self.file_vb[idx_vb].append(f_vb)
+
+		self.file_keys = list(self.file_ex.keys())
+	def __len__(self):
+		return len(self.file_keys)
+	def __getitem__(self, index):       
+		key = self.file_keys[index]    
+		A_ex, B_ex = np.random.choice(self.file_ex[key],2,replace=False)
+		A_wb, B_wb = np.random.choice(self.file_wb[key],2,replace=False)
+		A_vb, B_vb = np.random.choice(self.file_vb[key],2,replace=False)
+		
+		val_ex = torch.tensor((int(self.get_file_name(B_ex).split('-')[-1]) - int(self.get_file_name(A_ex).split('-')[-1]))/20).float()
+		val_wb = torch.tensor((int(self.get_file_name(B_wb).split('-')[-1]) - int(self.get_file_name(A_wb).split('-')[-1]))/20).float()
+		val_vb = torch.tensor((int(self.get_file_name(B_vb).split('-')[-1]) - int(self.get_file_name(A_vb).split('-')[-1]))/20).float()
+
+		img_A_ex = np.array(io.imread(A_ex))/255
+		img_B_ex = np.array(io.imread(B_ex))/255
+
+		img_A_wb = np.array(io.imread(A_wb))/255
+		img_B_wb = np.array(io.imread(B_wb))/255
+
+		img_A_vb = np.array(io.imread(A_vb))/255
+		img_B_vb = np.array(io.imread(B_vb))/255
+
+		if self.augment:
+			img_A_ex, img_B_ex = self.aug_process(img_A_ex, img_B_ex)
+			img_A_wb, img_B_wb = self.aug_process(img_A_wb, img_B_wb)
+			img_A_vb, img_B_vb = self.aug_process(img_A_vb, img_B_vb)
+
+		img_A_ex = torch.from_numpy(np.ascontiguousarray(np.transpose(img_A_ex, (2, 0, 1)))).float()
+		img_B_ex = torch.from_numpy(np.ascontiguousarray(np.transpose(img_B_ex, (2, 0, 1)))).float()
+
+		img_A_wb = torch.from_numpy(np.ascontiguousarray(np.transpose(img_A_wb, (2, 0, 1)))).float()
+		img_B_wb = torch.from_numpy(np.ascontiguousarray(np.transpose(img_B_wb, (2, 0, 1)))).float()
+
+		img_A_vb = torch.from_numpy(np.ascontiguousarray(np.transpose(img_A_vb, (2, 0, 1)))).float()
+		img_B_vb = torch.from_numpy(np.ascontiguousarray(np.transpose(img_B_vb, (2, 0, 1)))).float()
+
+		return {'A_ex': img_A_ex, 'B_ex': img_B_ex, 'val_ex':val_ex, 
+				'A_wb': img_A_wb, 'B_wb': img_B_wb, 'val_wb':val_wb, 
+				'A_vb': img_A_vb, 'B_vb': img_B_vb, 'val_vb':val_vb 
+			   } 
+
+	def get_file_paths(self, folder,suffix):
+		file_paths = []
+		for root, dirs, filenames in os.walk(folder):
+			filenames = sorted(filenames)
+			for filename in filenames:
+				input_path = os.path.abspath(root)
+				file_path = os.path.join(input_path, filename)
+				if filename.split('.')[-1] == suffix:
+					file_paths.append(file_path)
+			break  
+		return file_paths
+
+	def get_file_name(self, fp):
+		return fp.split('/')[-1].split('.')[0]
+
+	def aug_process(self, img_GT, img_LQ, img_M=None):
+		"""
+		from NeuralOps paper: https://github.com/amberwangyili/neurop/blob/main/codes_pytorch/utils.py
+		"""
+		h, w = img_GT.shape[:2]
+		crop_size = 20
+		new_h = random.randint(h - crop_size, h - 1)
+		new_w = random.randint(w - crop_size, w - 1)
+
+		y = random.randint(0, h - new_h - 1)
+		x = random.randint(0, w - new_w - 1)
+
+		img_GT = img_GT[y:y+new_h, x:x+new_w,:]
+		img_LQ = img_LQ[y:y+new_h, x:x+new_w,:]
+		if img_M is not None:
+			img_M = img_M[y:y+new_h, x:x+new_w]
+
+		is_flip = random.randint(0,3)
+		if is_flip == 0:
+			img_GT = np.flip(img_GT, axis=0)
+			img_LQ = np.flip(img_LQ, axis=0)
+			if img_M is not None:
+				img_M = np.flip(img_M,axis=0)
+		elif is_flip == 2:
+			img_GT = np.flip(img_GT, axis=1)
+			img_LQ = np.flip(img_LQ, axis=1)
+			if img_M is not None:
+				img_M = np.flip(img_M, axis=1)
+		is_rot = random.randint(0,3)
+		if is_rot !=0:
+			if img_M is not None:
+				img_M = np.rot90(img_M, is_rot)
+			img_GT = np.rot90(img_GT, is_rot)
+			img_LQ = np.rot90(img_LQ, is_rot)
+		if img_M is not None:
+			return img_GT, img_LQ, img_M
+		else:
+			return img_GT, img_LQ
+
 if __name__ == "__main__":
 	# Example of how to use this dataset
 	img_dir = "/home/ppnk-wsl/capstone/Dataset/FiveK_Dark/"

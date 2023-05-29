@@ -76,8 +76,8 @@ class SMBilateralNetPointwiseV2(nn.Module):
 
 		# local branch
 		self.local = nn.Sequential(ConvBlock(self.n_splat, 2*self.n_splat, 1, norm=self.norm),
-								ConvBlock(2*self.n_splat, 2*self.n_splat, 1, norm=self.norm),
-							  ConvBlock(2*self.n_splat, self.n_splat, 1, norm=self.norm))
+								ConvBlock(2*self.n_splat, 2*self.n_splat, 1, norm=False),
+							  ConvBlock(2*self.n_splat, self.n_splat, 1, norm=False))
 
 		# # splat features
 		# self.splat = nn.Sequential(
@@ -92,8 +92,8 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		)
 
 		self.cond_fc = nn.Sequential(
-			fc(32, 32),
-			fc(32, self.n_splat),
+			fc(32, 32, norm=False),
+			fc(32, self.n_splat, norm=False),
 		)
 
 		# from fused of condition + splat (32-channel) -> (3*4*luma_bins-channel)
