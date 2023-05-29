@@ -180,12 +180,36 @@ def get_model(config, print_summary=True):
 	elif name == "bilateral_neuralops":
 		from models.bilateral_neuralops.networks import BilateralNeurOP
 		model = BilateralNeurOP(
-			in_nc=config['model']['in_nc'],
-			out_nc=config['model']['out_nc'],
-			base_nf=config['model']['base_nf'],
+			n_in=config['model']['n_in'],
+			n_out=config['model']['n_out'],
 			encode_nf=config['model']['encode_nf'],
 			load_path=config['model']['load_path'],
-			return_vals=config['model']['return_vals']
+			return_vals=config['model']['return_vals'],
+			lowres=config['model']['lowres'],
+			luma_bins=config['model']['luma_bins'],
+			spatial_bins=config['model']['spatial_bins'],
+			channel_multiplier=config['model']['channel_multiplier'],
+			guide_pts=config['model']['guide_pts'],
+			norm=config['model']['batch_norm'],
+			iteratively_upsample=config['model']['iteratively_upsample']
+		)
+		if print_summary: summary(model, (1, 3, 500, 300))
+	
+	elif name == "bilateral_ewv_neuralops":
+		from models.bilateral_neuralops.networks import BilateralEWVNeurOP
+		model = BilateralEWVNeurOP(
+			n_in=config['model']['n_in'],
+			n_out=config['model']['n_out'],
+			encode_nf=config['model']['encode_nf'],
+			load_path=config['model']['load_path'],
+			return_vals=config['model']['return_vals'],
+			lowres=config['model']['lowres'],
+			luma_bins=config['model']['luma_bins'],
+			spatial_bins=config['model']['spatial_bins'],
+			channel_multiplier=config['model']['channel_multiplier'],
+			guide_pts=config['model']['guide_pts'],
+			norm=config['model']['batch_norm'],
+			iteratively_upsample=config['model']['iteratively_upsample']
 		)
 		if print_summary: summary(model, (1, 3, 500, 300))
 

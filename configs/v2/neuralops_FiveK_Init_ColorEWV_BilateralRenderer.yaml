@@ -1,6 +1,6 @@
 # general info
 name: NeuralOps_FiveK_Init_ColorEWV_BilateralRenderer
-notes: "Half-Instance-Norm + model arch = ColorEWV bilateral renderer, using zb+wb generated init dataset"
+notes: "Instance-Norm + model arch = ColorEWV bilateral renderer, using zb+wb generated init dataset"
 
 # model
 model: 

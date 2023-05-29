@@ -75,9 +75,8 @@ class SMBilateralNetPointwiseV2(nn.Module):
 		self.splat = nn.Sequential(*splat)
 
 		# local branch
-		self.local = nn.Sequential(ConvBlock(self.n_splat, 2*self.n_splat, 1, norm=self.norm),
-								ConvBlock(2*self.n_splat, 2*self.n_splat, 1, norm=False),
-							  ConvBlock(2*self.n_splat, self.n_splat, 1, norm=False))
+		self.local = nn.Sequential(ConvBlock(self.n_splat, self.n_splat, 1, norm=self.norm),
+							  ConvBlock(self.n_splat, self.n_splat, 1, norm=False))
 
 		# # splat features
 		# self.splat = nn.Sequential(
@@ -87,12 +86,12 @@ class SMBilateralNetPointwiseV2(nn.Module):
 
 		# condition networks (global condition)
 		self.cond_net = nn.Sequential(
-			ConvBlock(self.n_splat, 2, 1, stride=2),
-			nn.AdaptiveAvgPool2d(4) 	# pool to (N,2,4,4)
+			ConvBlock(self.n_splat, 4, 1, stride=2, norm=self.norm),
+			nn.AdaptiveAvgPool2d(4) 	# pool to (N,4,4,4)
 		)
 
 		self.cond_fc = nn.Sequential(
-			fc(32, 32, norm=False),
+			fc(64, 32, norm=False),
 			fc(32, self.n_splat, norm=False),
 		)
 

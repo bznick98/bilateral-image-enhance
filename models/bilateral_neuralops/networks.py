@@ -44,7 +44,17 @@ class BilateralOperator(nn.Module):
 	when forward, it slices the learned bilateral grid using full-res input image
 	to get a full-res output image. 
 	"""
-	def __init__(self, in_nc=3, out_nc=3,base_nf=64):
+	def __init__(self,
+			in_nc=3,
+			out_nc=3,
+			lowres=[256, 256],
+			luma_bins=8,
+			spatial_bins=64,
+			channel_multiplier=1,
+			guide_pts=8,
+			norm=False,
+			iteratively_upsample=False
+		):
 		super(BilateralOperator,self).__init__()
 		# self.base_nf = base_nf
 		# self.out_nc = out_nc
@@ -54,15 +64,15 @@ class BilateralOperator(nn.Module):
 		# self.act = nn.LeakyReLU(inplace=True)
 
 		self.bilateral_model = DeepBilateralNetCurves(
-			lowres=[256, 256],
-			luma_bins=8,
-			spatial_bins=16,
-			channel_multiplier=1,
-			guide_pts=4,
-			norm=False,
+			lowres=lowres,
+			luma_bins=luma_bins,
+			spatial_bins=spatial_bins,
+			channel_multiplier=channel_multiplier,
+			guide_pts=guide_pts,
+			norm=norm,
 			n_in=in_nc,
 			n_out=out_nc,
-			iteratively_upsample=False
+			iteratively_upsample=iteratively_upsample
 		)
 
 	def forward(self, x, val):
@@ -286,13 +296,13 @@ class Renderer(nn.Module):
 	
 ############################################################################################################
 class BilateralRenderer(nn.Module):
-	def __init__(self, in_nc=3, out_nc=3):
+	def __init__(self, n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample):
 		super(BilateralRenderer,self).__init__()
-		self.in_nc = in_nc
-		self.out_nc = out_nc
-		self.ex_block = BilateralOperator(in_nc,out_nc)
-		self.bc_block = BilateralOperator(in_nc,out_nc)
-		self.vb_block = BilateralOperator(in_nc,out_nc)
+		self.in_nc = n_in
+		self.out_nc = n_out
+		self.ex_block = BilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.bc_block = BilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.vb_block = BilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
 
 	def forward(self, x_ex, x_bc, x_vb, v_ex, v_bc, v_vb):
 		rec_ex = self.ex_block(x_ex,0)
@@ -304,6 +314,28 @@ class BilateralRenderer(nn.Module):
 		map_vb = self.vb_block(x_vb,v_vb)
 
 		return rec_ex, rec_bc, rec_vb, map_ex, map_bc, map_vb
+############################################################################################################
+
+############################################################################################################
+class BilateralEWVRenderer(nn.Module):
+	def __init__(self, n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample):
+		super(BilateralEWVRenderer,self).__init__()
+		self.in_nc = n_in
+		self.out_nc = n_out
+		self.ex_block = BilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.wb_block = BilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		self.vb_block = BilateralOperator(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+	
+	def forward(self, x_ex, x_wb, x_vb, v_ex, v_wb, v_vb):
+		rec_ex = self.ex_block(x_ex,0)
+		rec_wb = self.bc_block(x_wb,0)
+		rec_vb = self.vb_block(x_vb,0)
+
+		map_ex = self.ex_block(x_ex,v_ex)
+		map_wb = self.bc_block(x_wb,v_wb)
+		map_vb = self.vb_block(x_vb,v_vb)
+
+		return rec_ex, rec_wb, rec_vb, map_ex, map_wb, map_vb
 ############################################################################################################
 
 ############################################################################################################
@@ -636,13 +668,14 @@ class AdaptivePredictor(nn.Module):
 class BilateralNeurOP(nn.Module):
 	def __init__(self,
 				 # neural op params
-				 in_nc = 3,
-				 out_nc = 3,
+				 n_in = 3,
+				 n_out = 3,
 				 base_nf = 64,
 				 encode_nf = 32,
 				 load_path = None,
 				 return_vals = False,
 				 # bilatera grid params
+				 lowres=[256, 256],
 				 luma_bins = 8,
 				 spatial_bins = 16,
 				 channel_multiplier = 1,
@@ -653,8 +686,8 @@ class BilateralNeurOP(nn.Module):
 		super(BilateralNeurOP,self).__init__()
 
 		self.fea_dim = encode_nf * 3
-		self.image_encoder = Encoder(in_nc,encode_nf)
-		renderer = BilateralRenderer(in_nc,out_nc) # TODO: pass bilateral params here
+		self.image_encoder = Encoder(n_in,encode_nf)
+		renderer = BilateralRenderer(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample) # TODO: pass bilateral params here
 		if load_path is not None: 
 			renderer.load_state_dict(torch.load(load_path))
 			
@@ -697,6 +730,71 @@ class BilateralNeurOP(nn.Module):
 			return img
 ############################################################################################################
 
+############################################################################################################
+class BilateralEWVNeurOP(nn.Module):
+	def __init__(self,
+				 # neural op params
+				 n_in = 3,
+				 n_out = 3,
+				 base_nf = 64,
+				 encode_nf = 32,
+				 load_path = None,
+				 return_vals = False,
+				 # bilatera grid params
+				 lowres=[256, 256],
+				 luma_bins = 8,
+				 spatial_bins = 16,
+				 channel_multiplier = 1,
+				 guide_pts = 4,
+				 norm = False,
+				 iteratively_upsample = False
+		):
+		super(BilateralEWVNeurOP,self).__init__()
+
+		self.fea_dim = encode_nf * 3
+		self.image_encoder = Encoder(n_in,encode_nf)
+		renderer = BilateralEWVRenderer(n_in, n_out, lowres, luma_bins, spatial_bins, channel_multiplier, guide_pts, norm, iteratively_upsample)
+		if load_path is not None: 
+			renderer.load_state_dict(torch.load(load_path))
+		
+		self.ex_renderer = renderer.ex_block
+		self.ex_predictor =  Predictor(self.fea_dim)
+
+		self.wb_renderer = renderer.wb_block
+		self.wb_predictor =  Predictor(self.fea_dim)
+		
+		self.vb_renderer = renderer.vb_block
+		self.vb_predictor =  Predictor(self.fea_dim)
+
+		self.renderers = [self.ex_renderer, self.wb_renderer, self.vb_renderer]
+		self.predict_heads = [self.ex_predictor ,self.wb_predictor, self.vb_predictor]
+
+		# if enabled, forward will return output, vals
+		self.return_vals = return_vals
+			
+	def render(self, x, vals):
+		b,_,h,w = img.shape
+		imgs = []
+		for nop, scalar in zip(self.renderers,vals):
+			img = nop(img,scalar)
+			output_img = torch.clamp(img, 0, 1.0)
+			imgs.append(output_img)
+		return imgs
+	
+	def forward(self, img):
+		b,_,h,w = img.shape
+		vals = []
+		for nop, predict_head in zip(self.renderers,self.predict_heads):
+			img_resized = F.interpolate(input=img, size=(256, int(256*w/h)), mode='bilinear', align_corners=False)
+			feat = self.image_encoder(img_resized)
+			scalar = predict_head(feat)
+			vals.append(scalar)
+			img = nop(img,scalar)
+		if self.return_vals:
+			return img, vals
+		else:
+			return img
+############################################################################################################
 
 ############################################################################################################
 class SimpleBilateralNeurOP(nn.Module):

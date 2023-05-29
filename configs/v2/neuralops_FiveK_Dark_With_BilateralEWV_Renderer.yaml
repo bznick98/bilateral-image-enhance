@@ -1,10 +1,10 @@
 # general info
 name: NeuralOps_FiveK_Dark_With_Bilateral_Renderer
-notes: ""
+notes: "EWV + Aug500 + Bilateral Ops"
 
 # model
 model: 
-  name: bilateral_neuralops
+  name: bilateral_ewv_neuralops
   n_in: 3
   n_out: 3
   encode_nf: 32
@@ -17,7 +17,7 @@ model:
   batch_norm: False
   iteratively_upsample: False
   order: null # default order: ebwv
-  load_path: ~ # ./result/checkpoints/NeuralOps_FiveK_Init_Bilateral/ckpt_199.pth
+  load_path: ~ # ./result/checkpoints/NeuralOps_FiveK_Init_Bilateral_EWV/ckpt_199.pth
 
 # loss
 loss:
@@ -30,7 +30,7 @@ loss:
   W_exp: 0                              # Exposure Control Loss
   patch_size: 0                         # - patch size for exposure control loss
   E: 0                                  # - exposure level for exposure control loss
-  W_cos: 0.1                              # Color Angle Loss
+  W_cos: 1.0                              # Color Angle Loss
 
 
 # dataset
