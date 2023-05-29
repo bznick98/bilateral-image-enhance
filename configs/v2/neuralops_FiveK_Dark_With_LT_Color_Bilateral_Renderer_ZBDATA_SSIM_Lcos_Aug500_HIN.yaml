@@ -17,7 +17,7 @@ model:
   batch_norm: True
   iteratively_upsample: False
   order: null # default order: bewv
-  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_LTColorBilateralRenderer_ZBDATA_Aug500_HIN/ckpt_199.pth
+  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_LTColorBilateralRenderer_ZBDATA_Aug500_HIN/ckpt_399.pth
 
 # loss
 loss:

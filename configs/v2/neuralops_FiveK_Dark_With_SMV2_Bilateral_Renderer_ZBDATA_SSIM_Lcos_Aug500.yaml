@@ -9,10 +9,10 @@ model:
   n_out: 3
   encode_nf: 32
   return_vals: False
-  lowres: [128, 128]
-  luma_bins: 16
-  spatial_bins: 32
-  guide_pts: 4
+  lowres: [256, 256]
+  luma_bins: 6
+  spatial_bins: 64
+  guide_pts: 8
   channel_multiplier: 1
   batch_norm: True # TODO: rename this to norm, actually uses Half-Instance-Norm
   iteratively_upsample: False

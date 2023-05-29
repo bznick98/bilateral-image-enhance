@@ -314,6 +314,25 @@ def get_model(config, print_summary=True):
 		)
 		if print_summary: summary(model, (1, 3, 500, 300))
 
+	elif name == "colorv2_bilateral_neuralops":
+		from models.bilateral_neuralops.networks import ColorV2BilateralNeurOP
+		model = ColorV2BilateralNeurOP(
+			n_in=config['model']['n_in'],
+			n_out=config['model']['n_out'],
+			encode_nf=config['model']['encode_nf'],
+			load_path=config['model']['load_path'],
+			return_vals=config['model']['return_vals'],
+			lowres=config['model']['lowres'],
+			luma_bins=config['model']['luma_bins'],
+			spatial_bins=config['model']['spatial_bins'],
+			channel_multiplier=config['model']['channel_multiplier'],
+			guide_pts=config['model']['guide_pts'],
+			norm=config['model']['batch_norm'],
+			iteratively_upsample=config['model']['iteratively_upsample'],
+			order=config['model']['order']
+		)
+		if print_summary: summary(model, (1, 3, 500, 300))
+
 	else:
 		raise NotImplementedError("Please add model initiation in utils.py:get_model()")
 	

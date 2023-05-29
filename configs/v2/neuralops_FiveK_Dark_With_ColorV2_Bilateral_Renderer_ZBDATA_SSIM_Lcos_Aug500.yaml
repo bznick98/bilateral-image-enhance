@@ -1,24 +1,23 @@
 # general info
-name: NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_ZBDATA_SSIM_Lcos
-notes: "500 Init Data + Non-clamp + SSIM-L1 Loss + MultiStepLR + Heavy Color Loss"
+name: NeuralOps_FiveK_Dark_With_ColorV2_Bilateral_Renderer_ZBDATA_SSIM_Lcos_Aug500
+notes: "Half Instance Norm + Smaller Model Arch + 500 Init Data + Non-clamp + SSIM-L1 Loss + MultiStepLR + Heavy Color Loss + 500 Aug Init Data"
 
 # model
 model: 
-  name: color_bilateral_neuralops
+  name: colorv2_bilateral_neuralops
   n_in: 3
   n_out: 3
   encode_nf: 32
   return_vals: False
   lowres: [256, 256]
-  luma_bins: 8
+  luma_bins: 6
   spatial_bins: 64
   guide_pts: 8
   channel_multiplier: 1
-  batch_norm: False
+  batch_norm: True # TODO: rename this to norm, actually uses Half-Instance-Norm
   iteratively_upsample: False
   order: null # default order: bewv
-  # load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorBilateralRenderer_ZBDATA/ckpt_199.pth
-  load_path: ~
+  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorV2_BilateralRenderer_ZBDATA_Aug500/ckpt_199.pth
 
 # loss
 loss:
@@ -31,7 +30,7 @@ loss:
   W_exp: 0                              # Exposure Control Loss
   patch_size: 0                         # - patch size for exposure control loss
   E: 0                                  # - exposure level for exposure control loss
-  W_cos: 1.0                            # Color Angle Loss
+  W_cos: 0.6                            # Color Angle Loss
 
 
 # dataset
@@ -54,7 +53,7 @@ checkpoint_save_path: ./result/checkpoints/       # save checkpoint to {name}/ u
 visualization_save_path: ./result/visualization/  # save visualization to {name}/ under this directory
 
 # eval
-eval_model_path: ./result/checkpoints/NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_ZBDATA_SSIM_Lcos/ckpt_133.pth  # checkpoint used for evaluation (test.py)
+eval_model_path: ./result/checkpoints/NeuralOps_FiveK_Dark_With_SM_Bilateral_Renderer_ZBDATA_SSIM_Lcos_Aug500/ckpt_132.pth  # checkpoint used for evaluation (test.py)
 
 # misc
 tensorboard: False                      # run "tensorboard --logdir runs/"
