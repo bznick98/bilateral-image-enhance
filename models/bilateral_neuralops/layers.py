@@ -41,7 +41,8 @@ class ConvBlock(nn.Module):
         self.norm = None
         self.relu = None
         if norm:
-            self.norm = nn.InstanceNorm2d(out_channels//2, affine=True)
+            # self.norm = nn.InstanceNorm2d(out_channels//2, affine=True)
+            self.norm = nn.InstanceNorm2d(out_channels, affine=True)
         if relu:
             self.relu = nn.LeakyReLU(inplace=True)
 
@@ -49,8 +50,9 @@ class ConvBlock(nn.Module):
         out = self.conv(x)
         # Half Instance Norm (HIN)
         if self.norm:
-            out_1, out_2 = torch.chunk(out, 2, dim=1)
-            out = torch.cat([self.norm(out_1), out_2], dim=1)
+            # out_1, out_2 = torch.chunk(out, 2, dim=1)
+            # out = torch.cat([self.norm(out_1), out_2], dim=1)
+            out = self.norm(out)
         if self.relu:
             out = self.relu(out)
         return out
