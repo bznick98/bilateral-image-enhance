@@ -1,60 +1,59 @@
 # general info
-name: NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_ZBDATA_SSIM_Lcos
-notes: "500 Init Data + Non-clamp + SSIM-L1 Loss + MultiStepLR + Heavy Color Loss"
+name: NeuralOps_FiveK_Init_BilateralEWVRenderer
+notes: "Bilateral + EWV + Aug 500"
 
 # model
 model: 
-  name: color_bilateral_neuralops
+  name: bilateral_ewv_neuralops
   n_in: 3
   n_out: 3
   encode_nf: 32
   return_vals: False
   lowres: [256, 256]
   luma_bins: 8
-  spatial_bins: 64
-  guide_pts: 8
+  spatial_bins: 16
+  guide_pts: 4
   channel_multiplier: 1
   batch_norm: False
   iteratively_upsample: False
-  order: null # default order: bewv
-  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorBilateralRenderer_ZBDATA/ckpt_399.pth
-  # load_path: ~
+  order: null # default order: ebwv
+  load_path: ~
 
 # loss
 loss:
   # weights for different loss components
   W_L2: 0                               # L2 loss (nn.MSELoss)
   W_L1: 1                               # L1 loss (nn.SmoothL1Loss)
-  W_TV: 0.1                             # Total Variation Loss
+  W_TV: 0                               # Total Variation Loss
   W_col: 0                              # Color Consistency Loss
   W_spa: 0                              # Spatial Consistency Loss
   W_exp: 0                              # Exposure Control Loss
   patch_size: 0                         # - patch size for exposure control loss
   E: 0                                  # - exposure level for exposure control loss
-  W_cos: 1.0                            # Color Angle Loss
+  W_cos: 0                              # Color Angle Loss
 
 
 # dataset
-dataset: FiveK                          # now supports [LOL, VELOL, SICE, FiveK]
-data_dir: /home/ubuntu/capstone/Dataset/FiveK_Dark/
+dataset: EWVOps_Init                 # now supports [LOL, VELOL, SICE, FiveK]
+data_dir: /home/ubuntu/capstone/Dataset/zb_NeuralOps_Init/
 augment: True                           # augment training set if enabled
 resize: null                            # input & target resize if specified
 low_res: null                           # adding a low-res branch when retriving data, will return low_res, img, target
 num_workers: 4                          # num_workers used in DataLoader
 
 # train
-lr: !!float 1e-4                        # learning rate
+lr: !!float 5e-5                        # learning rate
 bs: 1                                   # batch size
 beta1: 0.9                              # beta1 for Adam optimizer
 beta2: 0.99                             # beta2 for Adam optimizer
 weight_decay: !!float 1e-8              # weight decay
-epochs: 134                             # number of training epochs
+epochs: 400                             # number of training epochs 100,000 / 250
 resume_from: null                       # resume pretrained model from this path
 checkpoint_save_path: ./result/checkpoints/       # save checkpoint to {name}/ under this directory
 visualization_save_path: ./result/visualization/  # save visualization to {name}/ under this directory
 
 # eval
-eval_model_path: ./result/checkpoints/NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_ZBDATA_SSIM_Lcos/ckpt_133.pth  # checkpoint used for evaluation (test.py)
+eval_model_path: ./result/checkpoints/NeuralOps_FiveKLite_Official_Pretrain/neurop_fivek_dark.pth  # checkpoint used for evaluation (test.py)
 
 # misc
 tensorboard: False                      # run "tensorboard --logdir runs/"

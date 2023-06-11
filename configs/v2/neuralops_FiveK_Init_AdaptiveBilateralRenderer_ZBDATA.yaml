@@ -34,7 +34,7 @@ loss:
 
 # dataset
 dataset: NeuralOps_Init                     # now supports [LOL, VELOL, SICE, FiveK]
-data_dir: /home/ppnk-wsl/capstone/Dataset/zb_NeuralOps_Init/
+data_dir: /home/ubuntu/capstone/Dataset/zb_NeuralOps_Init/
 augment: False                          # augment training set if enabled
 resize: null                            # input & target resize if specified
 low_res: null                           # adding a low-res branch when retriving data, will return low_res, img, target

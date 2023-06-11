@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 from torchvision import transforms
 
 
@@ -50,9 +51,25 @@ class CustomLoss(nn.Module):
 ### NeuralOps Loss
 class NeuralOpsLoss(nn.Module):
     def __init__(self, W_TV=0.1, W_cos=0.1):
-        super(NeuralOpsLoss, self).__init__()
+        super().__init__()
         self.W_TV = W_TV
         self.W_cos = W_cos
+        self.TV_Loss = TVLoss()
+        self.Cos_Loss = CosineLoss()
+        self.L1_Loss = nn.L1Loss()
+    
+    def forward(self, y, target):
+        return self.L1_Loss(y, target) + \
+                self.TV_Loss(y) * self.W_TV + \
+                self.Cos_Loss(y, target) * self.W_cos
+
+# BilateralOps Loss (Slower)
+class BilateralOpsLoss(nn.Module):
+    def __init__(self, W_TV=0.1, W_cos=0.1, W_hist=0.2):
+        super().__init__()
+        self.W_TV = W_TV
+        self.W_cos = W_cos
+        self.W_hist = W_hist
         self.TV_Loss = TVLoss()
         self.Cos_Loss = CosineLoss()
         self.L1_Loss = MS_SSIM_L1_LOSS(
@@ -63,9 +80,13 @@ class NeuralOpsLoss(nn.Module):
                     compensation=1.0,
                     cuda_dev=0
         )
+        self.HistMatch_Loss = HistMatchLoss()
     
     def forward(self, y, target):
-        return self.L1_Loss(y, target) + self.TV_Loss(y) * self.W_TV + self.Cos_Loss(y, target) * self.W_cos
+        return self.L1_Loss(y, target) + \
+                self.TV_Loss(y) * self.W_TV + \
+                self.Cos_Loss(y, target) * self.W_cos +\
+                self.HistMatch_Loss(y, target) * self.W_hist
     
 class ExposureLoss(nn.Module):
     def __init__(self):
@@ -312,3 +333,106 @@ class MS_SSIM_L1_LOSS(nn.Module):
         loss_mix = self.compensation*loss_mix
 
         return loss_mix.mean()
+
+# Hist Match
+class HistMatchLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.hist_1d = SingleDimHistLayer()
+        self.hist_joint = JointHistLayer()
+        self.mutual_info = MutualInformationLoss()
+
+    def forward(self, y, target):
+        y_hist_r = self.hist_1d(y[:, 0])
+        y_hist_b = self.hist_1d(y[:, 2])
+        y_hist_g = self.hist_1d(y[:, 1])
+
+        t_hist_r = self.hist_1d(target[:, 0])
+        t_hist_g = self.hist_1d(target[:, 1])
+        t_hist_b = self.hist_1d(target[:, 2])
+
+        joint_hist_r = self.hist_joint(target[:, 0], y[:, 0])
+        joint_hist_g = self.hist_joint(target[:, 1], y[:, 1])
+        joint_hist_b = self.hist_joint(target[:, 2], y[:, 2])
+
+        hist_loss_r = self.mutual_info(t_hist_r, y_hist_r, joint_hist_r)
+        hist_loss_g = self.mutual_info(t_hist_g, y_hist_g, joint_hist_g)
+        hist_loss_b = self.mutual_info(t_hist_b, y_hist_b, joint_hist_b)
+
+        return (hist_loss_r + hist_loss_g + hist_loss_b)[0] / 3
+
+
+class EarthMoversDistanceLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        # input has dims: (Batch x Bins)
+        bins = x.size(1)
+        r = torch.arange(bins)
+        s, t = torch.meshgrid(r, r)
+        tt = t >= s
+
+        cdf_x = torch.matmul(x, tt.float())
+        cdf_y = torch.matmul(y, tt.float())
+
+        return torch.sum(torch.square(cdf_x - cdf_y), dim=1)
+
+
+class MutualInformationLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, p1, p2, p12):
+        # input p12 has dims: (Batch x Bins x Bins)
+        # input p1 & p2 has dims: (Batch x Bins)
+
+        product_p = torch.matmul(torch.transpose(p1.unsqueeze(1), 1, 2), p2.unsqueeze(1)) + torch.finfo(p1.dtype).eps
+        mi = torch.sum(p12 * torch.log(p12 / product_p + torch.finfo(p1.dtype).eps), dim=(1, 2))
+        h = -torch.sum(p12 * torch.log(p12 + torch.finfo(p1.dtype).eps), dim=(1, 2))
+
+        return 1 - (mi / h)
+
+
+class HistLayerBase(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.K = 256
+        self.L = 1 / self.K  # 2 / K -> if values in [-1,1] (Paper)
+        self.W = self.L / 2.5
+
+        self.mu_k = (self.L * (torch.arange(self.K) + 0.5)).view(-1, 1).cuda()
+
+    def phi_k(self, x, L, W):
+        return torch.sigmoid((x + (L / 2)) / W) - torch.sigmoid((x - (L / 2)) / W)
+
+    def compute_pj(self, x, mu_k, K, L, W):
+        # we assume that x has only one channel already
+        # flatten spatial dims
+        x = x.reshape(x.size(0), 1, -1)
+        x = x.repeat(1, K, 1)  # construct K channels
+
+        # apply activation functions
+        return self.phi_k(x - mu_k, L, W)
+
+
+class SingleDimHistLayer(HistLayerBase):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        N = x.size(1) * x.size(2)
+        pj = self.compute_pj(x, self.mu_k, self.K, self.L, self.W)
+        return pj.sum(dim=2) / N
+
+
+class JointHistLayer(HistLayerBase):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        N = x.size(1) * x.size(2)
+        p1 = self.compute_pj(x, self.mu_k, self.K, self.L, self.W)
+        p2 = self.compute_pj(y, self.mu_k, self.K, self.L, self.W)
+        return torch.matmul(p1, torch.transpose(p2, 1, 2)) / N

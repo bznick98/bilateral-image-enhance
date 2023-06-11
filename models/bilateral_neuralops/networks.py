@@ -328,11 +328,11 @@ class BilateralEWVRenderer(nn.Module):
 	
 	def forward(self, x_ex, x_wb, x_vb, v_ex, v_wb, v_vb):
 		rec_ex = self.ex_block(x_ex,0)
-		rec_wb = self.bc_block(x_wb,0)
+		rec_wb = self.wb_block(x_wb,0)
 		rec_vb = self.vb_block(x_vb,0)
 
 		map_ex = self.ex_block(x_ex,v_ex)
-		map_wb = self.bc_block(x_wb,v_wb)
+		map_wb = self.wb_block(x_wb,v_wb)
 		map_vb = self.vb_block(x_vb,v_vb)
 
 		return rec_ex, rec_wb, rec_vb, map_ex, map_wb, map_vb

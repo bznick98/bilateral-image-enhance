@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 from torch.profiler import profile, record_function, ProfilerActivity
 
-from models.bilateral_neuralops.networks import ColorEWVBilateralRenderer
+from models.bilateral_neuralops.networks import ColorEWVBilateralRenderer, BilateralEWVRenderer
 from utils import save_model, load_model, set_seed, save_tensor, hstack_tensors
 from utils import get_base_name, get_timecode
 from utils import get_dataset, get_model, eval
@@ -38,6 +38,19 @@ def train(config):
 	# model init
 	if config['model']['name'] == 'colorewv_bilateral_neuralops':
 		model = ColorEWVBilateralRenderer(
+			n_in=config['model']['n_in'],
+			n_out=config['model']['n_out'],
+			lowres=config['model']['lowres'],
+			luma_bins=config['model']['luma_bins'],
+			spatial_bins=config['model']['spatial_bins'],
+			channel_multiplier=config['model']['channel_multiplier'],
+			guide_pts=config['model']['guide_pts'],
+			norm=config['model']['batch_norm'],
+			iteratively_upsample=config['model']['iteratively_upsample']
+		)
+
+	elif config['model']['name'] == 'bilateral_ewv_neuralops':
+		model = BilateralEWVRenderer(
 			n_in=config['model']['n_in'],
 			n_out=config['model']['n_out'],
 			lowres=config['model']['lowres'],

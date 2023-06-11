@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
-from loss import CustomLoss, ZeroReferenceLoss, NeuralOpsLoss
+from loss import CustomLoss, ZeroReferenceLoss, NeuralOpsLoss, BilateralOpsLoss
 from utils import save_model, load_model, set_seed
 from utils import get_base_name, get_timecode
 from utils import get_dataset, get_model, eval
@@ -42,7 +42,8 @@ def train(config):
 	# 		W_TV=config['loss']['W_TV'], W_col=config['loss']['W_col'], W_spa=config['loss']['W_spa'], W_exp=config['loss']['W_exp'], 
 	# 		W_L2=config['loss']['W_L2'], W_L1=config['loss']['W_L1'], W_cos=config['loss']['W_cos']
 	# 	)
-	loss = NeuralOpsLoss(W_TV=config['loss']['W_TV'], W_cos=config['loss']['W_cos']).to(device)
+	# loss = NeuralOpsLoss(W_TV=config['loss']['W_TV'], W_cos=config['loss']['W_cos']).to(device)
+	loss = BilateralOpsLoss(W_TV=config['loss']['W_TV'], W_cos=config['loss']['W_cos']).to(device)
 
 	# optimizer
 	optimizer = Adam(model.parameters(),

@@ -1,10 +1,10 @@
 # general info
-name: NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_ZBDATA_SSIM_Lcos
-notes: "500 Init Data + Non-clamp + SSIM-L1 Loss + MultiStepLR + Heavy Color Loss"
+name: NeuralOps_FiveK_Dark_With_Adaptive_Bilateral_Renderer_ZBDATAv2
+notes: ""
 
 # model
 model: 
-  name: color_bilateral_neuralops
+  name: adaptive_bilateral_neuralops
   n_in: 3
   n_out: 3
   encode_nf: 32
@@ -16,22 +16,20 @@ model:
   channel_multiplier: 1
   batch_norm: False
   iteratively_upsample: False
-  order: null # default order: bewv
-  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorBilateralRenderer_ZBDATA/ckpt_399.pth
-  # load_path: ~
+  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_AdaptiveBilateralRenderer_ZBDATAv2/ckpt_199.pth
 
 # loss
 loss:
   # weights for different loss components
   W_L2: 0                               # L2 loss (nn.MSELoss)
   W_L1: 1                               # L1 loss (nn.SmoothL1Loss)
-  W_TV: 0.1                             # Total Variation Loss
+  W_TV: 0.1                               # Total Variation Loss
   W_col: 0                              # Color Consistency Loss
   W_spa: 0                              # Spatial Consistency Loss
   W_exp: 0                              # Exposure Control Loss
   patch_size: 0                         # - patch size for exposure control loss
   E: 0                                  # - exposure level for exposure control loss
-  W_cos: 1.0                            # Color Angle Loss
+  W_cos: 0.5                              # Color Angle Loss
 
 
 # dataset
@@ -54,7 +52,7 @@ checkpoint_save_path: ./result/checkpoints/       # save checkpoint to {name}/ u
 visualization_save_path: ./result/visualization/  # save visualization to {name}/ under this directory
 
 # eval
-eval_model_path: ./result/checkpoints/NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_ZBDATA_SSIM_Lcos/ckpt_133.pth  # checkpoint used for evaluation (test.py)
+eval_model_path: ./result/checkpoints/NeuralOps_FiveK_Dark_With_Adaptive_Bilateral_Renderer/ckpt_0.pth  # checkpoint used for evaluation (test.py)
 
 # misc
 tensorboard: False                      # run "tensorboard --logdir runs/"

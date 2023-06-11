@@ -1,6 +1,6 @@
 # general info
-name: NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_ZBDATA_SSIM_Lcos
-notes: "500 Init Data + Non-clamp + SSIM-L1 Loss + MultiStepLR + Heavy Color Loss"
+name: NeuralOps_FiveK_Dark_With_Color_Bilateral_Renderer_HistMatch_ZBDATAv2
+notes: "500 Init Data + Non-clamp + SSIM-L1 Loss + MultiStepLR + Heavy Color Loss + HistMatchLoss"
 
 # model
 model: 
@@ -17,7 +17,7 @@ model:
   batch_norm: False
   iteratively_upsample: False
   order: null # default order: bewv
-  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorBilateralRenderer_ZBDATA/ckpt_399.pth
+  load_path: ./result/checkpoints/NeuralOps_FiveK_Init_ColorBilateralRenderer_ZBDATAv2/ckpt_399.pth
   # load_path: ~
 
 # loss
@@ -32,7 +32,6 @@ loss:
   patch_size: 0                         # - patch size for exposure control loss
   E: 0                                  # - exposure level for exposure control loss
   W_cos: 1.0                            # Color Angle Loss
-
 
 # dataset
 dataset: FiveK                          # now supports [LOL, VELOL, SICE, FiveK]
